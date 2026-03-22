@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// --- SISTEMA DE ACESSO ---
+model User {
+  id          Int       @id @default(autoincrement())
+  username    String    @unique
+  password    String
+  role        String
+  resetToken  String?   // A interrogação indica que é opcional
+
+  // Relacionamentos (O Prisma exige mapear os dois lados)
+  rules       AnalysisRule[]
+  prs         PullRequest[]
+
+  @@map("users") // Mantém o nome da tabela igual ao do diagrama
+}
+
+// --- CORE DO BOT E GESTÃO ---
+model Repository {
+  id          String    @id @default(uuid())
+  name        String
+  githubId    Int       @unique
+  teamId      String
+
+  // Relacionamentos
+  rules       AnalysisRule[]
+  prs         PullRequest[]
+
+  @@map("repositories")
+}
+
+model AnalysisRule {
+  id           String     @id @default(uuid())
+  repositoryId String
+  ruleType     String
+  content      String     
+  createdById  Int
+
+  // Relacionamentos (Chaves Estrangeiras)
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  createdBy    User       @relation(fields: [createdById], references: [id])
+
+  @@map("analysis_rules")
+}
+
+// --- FLUXO DE REVISÃO (CODE REVIEW) ---
+model PullRequest {
+  id           String     @id @default(uuid())
+  repositoryId String
+  prNumber     Int
+  authorId     Int
+  status       String
+
+  // Relacionamentos
+  repository   Repository @relation(fields: [repositoryId], references: [id])
+  author       User       @relation(fields: [authorId], references: [id])
+  results      AnalysisResult[]
+
+  @@map("pull_requests")
+}
+
+model AnalysisResult {
+  id          String      @id @default(uuid())
+  prId        String
+  healthScore Float
+  iaFeedback  String      
+  createdAt   DateTime    @default(now())
+
+  // Relacionamentos
+  pr          PullRequest @relation(fields: [prId], references: [id])
+
+  @@map("analysis_results")
+}
