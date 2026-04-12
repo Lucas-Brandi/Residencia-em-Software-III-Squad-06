@@ -3,47 +3,80 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
 
 // --- SISTEMA DE ACESSO ---
 model User {
-  id          Int       @id @default(autoincrement())
-  username    String    @unique
-  password    String
-  role        String
-  resetToken  String?   // A interrogação indica que é opcional
+  id             Int       @id @default(autoincrement())
+  username       String    @unique
+  githubUsername String?   @map("github_username") // Username oficial do GitHub
+  avatarUrl      String?   @map("avatar_url")      // Foto de perfil do GitHub
+  password       String
+  role           String    // "admin" | "dev"
+  resetToken     String?   @map("reset_token")
 
-  // Relacionamentos (O Prisma exige mapear os dois lados)
-  rules       AnalysisRule[]
-  prs         PullRequest[]
+  // Relacionamentos
+  teams           TeamUser[]
+  rules           AnalysisRule[]
+  prs             PullRequest[]
+  reviewedResults AnalysisResult[] @relation("ReviewedBy")
 
-  @@map("users") // Mantém o nome da tabela igual ao do diagrama
+  @@map("users")
+}
+
+// --- TIMES (SQUADS) ---
+model Team {
+  id          String    @id @default(uuid())
+  name        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relacionamentos
+  members     TeamUser[]
+  repositories Repository[]
+
+  @@map("teams")
+}
+
+model TeamUser {
+  teamId    String   @map("team_id")
+  userId    Int      @map("user_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  // Chaves Estrangeiras
+  team      Team @relation(fields: [teamId], references: [id])
+  user      User @relation(fields: [userId], references: [id])
+
+  @@id([teamId, userId]) // Chave composta — evita duplicata no mesmo time
+  @@map("team_users")
 }
 
 // --- CORE DO BOT E GESTÃO ---
 model Repository {
-  id          String    @id @default(uuid())
-  name        String
-  githubId    Int       @unique
-  teamId      String
+  id        String   @id @default(uuid())
+  name      String
+  githubId  Int      @unique @map("github_id")
+  githubUrl String?  @map("github_url") // URL do repositório no GitHub
+  teamId    String   @map("team_id")
+  isActive  Boolean  @default(true) @map("is_active") // Soft delete
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  rules       AnalysisRule[]
-  prs         PullRequest[]
+  team      Team           @relation(fields: [teamId], references: [id])
+  rules     AnalysisRule[]
+  prs       PullRequest[]
 
   @@map("repositories")
 }
 
 model AnalysisRule {
   id           String     @id @default(uuid())
-  repositoryId String
-  ruleType     String
-  content      String     
-  createdById  Int
+  repositoryId String     @map("repository_id")
+  ruleType     String     @map("rule_type") // Ex: "segurança", "clean_code"
+  content      String     // MD ou JSON para a IA
+  createdById  Int        @map("created_by")
 
-  // Relacionamentos (Chaves Estrangeiras)
+  // Relacionamentos
   repository   Repository @relation(fields: [repositoryId], references: [id])
   createdBy    User       @relation(fields: [createdById], references: [id])
 
@@ -52,15 +85,19 @@ model AnalysisRule {
 
 // --- FLUXO DE REVISÃO (CODE REVIEW) ---
 model PullRequest {
-  id           String     @id @default(uuid())
-  repositoryId String
-  prNumber     Int
-  authorId     Int
-  status       String
+  id           String    @id @default(uuid())
+  repositoryId String    @map("repository_id")
+  prNumber     Int       @map("pr_number")
+  authorId     Int       @map("author_id")
+  title        String?   // Título do PR
+  githubUrl    String?   @map("github_url") // Link direto para o PR no GitHub
+  status       String    // "aberto" | "fechado" | "mergeado"
+  openedAt     DateTime  @default(now()) @map("opened_at")
+  closedAt     DateTime? @map("closed_at") // Nullable — só preenchido ao fechar
 
   // Relacionamentos
-  repository   Repository @relation(fields: [repositoryId], references: [id])
-  author       User       @relation(fields: [authorId], references: [id])
+  repository   Repository       @relation(fields: [repositoryId], references: [id])
+  author       User             @relation(fields: [authorId], references: [id])
   results      AnalysisResult[]
 
   @@map("pull_requests")
@@ -68,13 +105,17 @@ model PullRequest {
 
 model AnalysisResult {
   id          String      @id @default(uuid())
-  prId        String
-  healthScore Float
-  iaFeedback  String      
-  createdAt   DateTime    @default(now())
+  prId        String      @map("pr_id")
+  healthScore Float       @map("health_score") // Nota de 0 a 100
+  iaFeedback  String      @map("ia_feedback")  // Comentário final postado pelo bot
+  status      String      @default("pendente") // "pendente" | "aprovado" | "rejeitado"
+  reviewedById Int?       @map("reviewed_by")  // Admin/Dev que revisou o feedback da IA
+  reviewedAt  DateTime?   @map("reviewed_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
 
   // Relacionamentos
   pr          PullRequest @relation(fields: [prId], references: [id])
+  reviewedBy  User?       @relation("ReviewedBy", fields: [reviewedById], references: [id])
 
   @@map("analysis_results")
 }
