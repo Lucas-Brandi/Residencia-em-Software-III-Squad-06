@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
@@ -18,6 +19,7 @@ export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   async create(@Body() createTeamDto: CreateTeamDto) {
     const team = await this.teamsService.create(createTeamDto);
     return {
@@ -66,6 +68,7 @@ export class TeamsController {
   }
 
   @Post(':id/members')
+  @HttpCode(HttpStatus.CREATED)
   async addMember(
     @Param('id') id: string,
     @Body() addTeamMemberDto: AddTeamMemberDto,

@@ -1,34 +1,78 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpStatus,
+  HttpCode,
+} from '@nestjs/common';
 import { AnalysisResultsService } from './analysis-results.service';
 import { CreateAnalysisResultDto } from './dto/create-analysis-result.dto';
 import { UpdateAnalysisResultDto } from './dto/update-analysis-result.dto';
 
 @Controller('analysis-results')
 export class AnalysisResultsController {
-  constructor(private readonly analysisResultsService: AnalysisResultsService) {}
+  constructor(
+    private readonly analysisResultsService: AnalysisResultsService,
+  ) {}
 
   @Post()
-  create(@Body() createAnalysisResultDto: CreateAnalysisResultDto) {
-    return this.analysisResultsService.create(createAnalysisResultDto);
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() createAnalysisResultDto: CreateAnalysisResultDto) {
+    const analysisResult = await this.analysisResultsService.create(
+      createAnalysisResultDto,
+    );
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Analysis result created successfully',
+      data: analysisResult,
+    };
   }
 
   @Get()
-  findAll() {
-    return this.analysisResultsService.findAll();
+  async findAll() {
+    const analysisResults = await this.analysisResultsService.findAll();
+    return {
+      statusCode: HttpStatus.OK,
+      data: analysisResults,
+    };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.analysisResultsService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const analysisResult = await this.analysisResultsService.findOne(id);
+    return {
+      statusCode: HttpStatus.OK,
+      data: analysisResult,
+    };
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAnalysisResultDto: UpdateAnalysisResultDto) {
-    return this.analysisResultsService.update(+id, updateAnalysisResultDto);
+  async update(
+    @Param('id') id: string,
+    @Body() updateAnalysisResultDto: UpdateAnalysisResultDto,
+  ) {
+    const analysisResult = await this.analysisResultsService.update(
+      id,
+      updateAnalysisResultDto,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Analysis result updated successfully',
+      data: analysisResult,
+    };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.analysisResultsService.remove(+id);
+  async remove(@Param('id') id: string) {
+    const analysisResult = await this.analysisResultsService.remove(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Analysis result deleted successfully',
+      data: analysisResult,
+    };
   }
 }

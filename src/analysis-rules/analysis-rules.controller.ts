@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpStatus,
+  HttpCode,
+  Query,
+} from '@nestjs/common';
 import { AnalysisRulesService } from './analysis-rules.service';
 import { CreateAnalysisRuleDto } from './dto/create-analysis-rule.dto';
 import { UpdateAnalysisRuleDto } from './dto/update-analysis-rule.dto';
@@ -8,27 +19,59 @@ export class AnalysisRulesController {
   constructor(private readonly analysisRulesService: AnalysisRulesService) {}
 
   @Post()
-  create(@Body() createAnalysisRuleDto: CreateAnalysisRuleDto) {
-    return this.analysisRulesService.create(createAnalysisRuleDto);
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() createAnalysisRuleDto: CreateAnalysisRuleDto) {
+    const analysisRule = await this.analysisRulesService.create(
+      createAnalysisRuleDto,
+    );
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Analysis rule created successfully',
+      data: analysisRule,
+    };
   }
 
   @Get()
-  findAll() {
-    return this.analysisRulesService.findAll();
+  async findAll(@Query('repositoryId') repositoryId?: string) {
+    const analysisRules = await this.analysisRulesService.findAll(repositoryId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: analysisRules,
+    };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.analysisRulesService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const analysisRule = await this.analysisRulesService.findOne(id);
+    return {
+      statusCode: HttpStatus.OK,
+      data: analysisRule,
+    };
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAnalysisRuleDto: UpdateAnalysisRuleDto) {
-    return this.analysisRulesService.update(+id, updateAnalysisRuleDto);
+  async update(
+    @Param('id') id: string,
+    @Body() updateAnalysisRuleDto: UpdateAnalysisRuleDto,
+  ) {
+    const analysisRule = await this.analysisRulesService.update(
+      id,
+      updateAnalysisRuleDto,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Analysis rule updated successfully',
+      data: analysisRule,
+    };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.analysisRulesService.remove(+id);
+  async remove(@Param('id') id: string) {
+    const analysisRule = await this.analysisRulesService.remove(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Analysis rule deleted successfully',
+      data: analysisRule,
+    };
   }
 }
