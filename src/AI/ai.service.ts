@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 @Injectable()
 export class AIService {
   // Pega a chave do .env
-  private readonly apiKey = process.env.AI_API_KEY; 
+  private readonly apiKey = process.env.AI_API_KEY;
   private genAI: GoogleGenerativeAI;
 
   constructor() {
@@ -16,15 +16,31 @@ export class AIService {
     this.genAI = new GoogleGenerativeAI(this.apiKey);
   }
 
+  async generateResponse(prompt: string): Promise<string> {
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+      });
+
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      console.error('Erro ao chamar a API do Gemini:', error);
+      throw new InternalServerErrorException(
+        'Falha ao gerar resposta com a IA',
+      );
+    }
+  }
+
   async analyzeCode(codeSnippet: string, rules: string[]): Promise<AIResponse> {
     try {
       // Usaremos o modelo 1.5-flash: é o mais rápido, barato (grátis) e excelente para código
-      const model = this.genAI.getGenerativeModel({ 
+      const model = this.genAI.getGenerativeModel({
         model: 'gemini-1.5-flash',
         generationConfig: {
           // O pulo do gato: força a IA a cuspir estritamente um JSON!
-          responseMimeType: "application/json", 
-        }
+          responseMimeType: 'application/json',
+        },
       });
 
       const systemPrompt = this.buildSystemPrompt(rules);
@@ -44,7 +60,9 @@ export class AIService {
       return parsedResponse;
     } catch (error) {
       console.error('Erro ao chamar a API do Gemini:', error);
-      throw new InternalServerErrorException('Falha ao processar a análise com a IA');
+      throw new InternalServerErrorException(
+        'Falha ao processar a análise com a IA',
+      );
     }
   }
 

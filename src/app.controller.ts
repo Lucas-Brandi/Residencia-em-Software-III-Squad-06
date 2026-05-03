@@ -1,12 +1,9 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { AIService } from './AI/ai.service';
+import { Controller, Get } from '@nestjs/common';
 
-@Controller('ai')
+@Controller()
 export class AppController {
-  constructor(private readonly aiService: AIService) {}
-
-  @Post('chat')
-  async chat(@Body('prompt') prompt: string) {
-    return this.aiService.generateResponse(prompt);
+  @Get()
+  getHello(): string {
+    return 'Bot de Análise de Código Online!';
   }
 }

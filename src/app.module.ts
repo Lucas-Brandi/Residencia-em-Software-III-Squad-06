@@ -8,9 +8,11 @@ import { AnalysisRulesModule } from './analysis-rules/analysis-rules.module';
 import { TeamsModule } from './teams/teams.module';
 import { PullRequestsModule } from './pull-requests/pull-requests.module';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
+import { AIModule } from './AI/ai.module';
 
 @Module({
   imports: [
+    AIModule,
     PrismaModule,
     UsersModule,
     RepositoriesModule,
