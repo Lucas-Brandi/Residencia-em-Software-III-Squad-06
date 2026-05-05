@@ -566,3 +566,14 @@ export class AppService {
 **Compatibilidade Node.js:** 16.x+  
 **Compatibilidade PostgreSQL:** 12+  
 **Compatibilidade NestJS:** 11.x+
+
+# Comando para rodar o Contêiner Docker
+```
+docker run -d -p 3000:3000 `
+  -e DATABASE_URL="postgres://usuario:senha@host:5432/nome_banco" `
+  -e JWT_SECRET="{jwt_secret}" `
+  -e AI_API_KEY="{api_api_key}" `
+  -e GITHUB_API_TOKEN="{github_api_key}" `
+  --name api-residencia-container `
+  api-residencia 
+```
