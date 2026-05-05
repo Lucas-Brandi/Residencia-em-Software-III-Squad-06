@@ -1,9 +1,13 @@
 import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
+@ApiTags('webhook')
 @Controller('webhook/github')
 export class GithubWebhookController {
   @Post()
   @HttpCode(200)
+  @ApiOperation({ summary: 'Receber webhook do GitHub' })
+  @ApiResponse({ status: 200, description: 'Webhook processado com sucesso' })
   async handleWebhook(
     @Headers('x-github-event') event: string,
     @Headers('x-github-delivery') deliveryId: string,
@@ -12,7 +16,8 @@ export class GithubWebhookController {
     const action = payload?.action;
     const prNumber = payload?.pull_request?.number;
     const diffUrl = payload?.pull_request?.diff_url as string | undefined;
-    const actionDate = payload?.pull_request?.updated_at || payload?.repository?.pushed_at;
+    const actionDate =
+      payload?.pull_request?.updated_at || payload?.repository?.pushed_at;
     const githubToken = process.env.GITHUB_TOKEN;
     const prAuthor = payload?.pull_request?.user?.login;
     const repositoryId = payload?.repository?.id;
@@ -36,7 +41,9 @@ export class GithubWebhookController {
         }
       } catch (error) {
         diffError =
-          error instanceof Error ? error.message : 'Unknown error fetching diff';
+          error instanceof Error
+            ? error.message
+            : 'Unknown error fetching diff';
       }
     }
 
