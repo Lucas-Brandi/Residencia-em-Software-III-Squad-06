@@ -13,6 +13,7 @@ import { AIModule } from './AI/ai.module';
 
 @Module({
   imports: [
+    GithubWebhookModule,
     AIModule,
     PrismaModule,
     UsersModule,
