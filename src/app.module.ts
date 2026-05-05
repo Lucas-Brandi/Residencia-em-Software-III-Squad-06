@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { GithubWebhookModule } from './webhook/github-webhook.module';
-// import { PrismaModule } from './prisma/prisma.module';
+import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { RepositoriesModule } from './repositories/repositories.module';
 import { AnalysisRulesModule } from './analysis-rules/analysis-rules.module';
