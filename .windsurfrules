@@ -1,0 +1,11 @@
+Regras do Projeto NestJS + Prisma:
+
+Somos rigorosos com a arquitetura do NestJS. Separe tudo em Modules, Controllers e Services.
+
+Use o PrismaService para interagir com o banco de dados. NUNCA coloque lógica de banco de dados diretamente nos Controllers.
+
+Todo endpoint que recebe dados (POST/PUT) deve ter um DTO (Data Transfer Object) validado com class-validator e class-transformer.
+
+Escreva código TypeScript limpo, evitando o uso de any.
+
+Antes de gerar um código novo, leia o arquivo prisma/schema.prisma para entender os modelos de dados.
