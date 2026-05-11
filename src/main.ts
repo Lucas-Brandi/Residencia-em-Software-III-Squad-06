@@ -7,6 +7,13 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS with specified settings
+  app.enableCors({
+    origin: '*',
+    credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type'],
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // remove campos não declarados no DTO
@@ -19,6 +26,7 @@ async function bootstrap() {
     .setDescription('The cats API description')
     .setVersion('1.0')
     .addTag('cats')
+    .addBearerAuth() // Enable Bearer Auth in Swagger
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
