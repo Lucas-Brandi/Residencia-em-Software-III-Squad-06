@@ -16,11 +16,11 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @ApiPropertyOptional({
     description: 'Função do usuário no sistema',
-    enum: ['admin', 'dev'],
-    example: 'admin',
+    enum: ['USER', 'ADMIN'],
+    example: 'ADMIN',
   })
   @IsString()
   @IsOptional()
-  @IsIn(['admin', 'dev'])
-  role?: 'admin' | 'dev';
+  @IsIn(['USER', 'ADMIN'])
+  role?: 'USER' | 'ADMIN';
 }
