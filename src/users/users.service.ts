@@ -27,7 +27,7 @@ export class UsersService {
         },
       });
 
-      const { password, ...userWithoutPassword } = user;
+      const { ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -41,9 +41,7 @@ export class UsersService {
 
   async findAll() {
     const users = await this.prisma.user.findMany();
-    return users.map(
-      ({ password, ...userWithoutPassword }) => userWithoutPassword,
-    );
+    return users.map(({ ...userWithoutPassword }) => userWithoutPassword);
   }
 
   async findOne(id: number) {
@@ -55,7 +53,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    const { password, ...userWithoutPassword } = user;
+    const { ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
 
@@ -85,7 +83,7 @@ export class UsersService {
         data: updateData,
       });
 
-      const { password, ...userWithoutPassword } = updatedUser;
+      const { ...userWithoutPassword } = updatedUser;
       return userWithoutPassword;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -110,7 +108,7 @@ export class UsersService {
       where: { id },
     });
 
-    const { password, ...userWithoutPassword } = existingUser;
+    const { ...userWithoutPassword } = existingUser;
     return userWithoutPassword;
   }
 }

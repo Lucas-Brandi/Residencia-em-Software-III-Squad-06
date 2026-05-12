@@ -43,7 +43,7 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    const { password, ...userWithoutPassword } = user;
+    const { ...userWithoutPassword } = user;
 
     return {
       accessToken,
@@ -64,7 +64,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const { password, ...userWithoutPassword } = user;
+    const { ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
 
@@ -96,7 +96,7 @@ export class AuthService {
     });
 
     // Exclude password from response
-    const { password, ...userWithoutPassword } = newUser;
+    const { ...userWithoutPassword } = newUser;
 
     return userWithoutPassword;
   }

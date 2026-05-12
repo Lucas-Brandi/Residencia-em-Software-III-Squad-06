@@ -41,7 +41,7 @@ export class AIController {
   })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async updateConfig(@Body() config: { rigidity?: number; parameters?: any }) {
+  updateConfig(@Body() config: { rigidity?: number; parameters?: any }) {
     return { message: 'AI configuration updated', config };
   }
 }
