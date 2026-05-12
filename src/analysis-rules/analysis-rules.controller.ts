@@ -28,7 +28,11 @@ export class AnalysisRulesController {
     description: 'Regra de análise criada com sucesso',
   })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  async create(@Body() createAnalysisRuleDto: CreateAnalysisRuleDto) {
+  async create(@Body() createAnalysisRuleDto: CreateAnalysisRuleDto): Promise<{
+    statusCode: number;
+    message: string;
+    data: unknown;
+  }> {
     const analysisRule = await this.analysisRulesService.create(
       createAnalysisRuleDto,
     );
@@ -41,7 +45,10 @@ export class AnalysisRulesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as regras de análise' })
-  @ApiResponse({
+  @ApiResponse({: Promise<{
+    statusCode: number;
+    data: unknown;
+  }>
     status: 200,
     description: 'Lista de regras de análise retornada com sucesso',
   })
@@ -57,7 +64,10 @@ export class AnalysisRulesController {
   @ApiOperation({ summary: 'Buscar uma regra de análise por ID' })
   @ApiResponse({ status: 200, description: 'Regra de análise encontrada' })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<{
+    statusCode: number;
+    data: unknown;
+  }> {
     const analysisRule = await this.analysisRulesService.findOne(id);
     return {
       statusCode: HttpStatus.OK,
@@ -76,7 +86,11 @@ export class AnalysisRulesController {
   async update(
     @Param('id') id: string,
     @Body() updateAnalysisRuleDto: UpdateAnalysisRuleDto,
-  ) {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: unknown;
+  }> {
     const analysisRule = await this.analysisRulesService.update(
       id,
       updateAnalysisRuleDto,
@@ -91,7 +105,11 @@ export class AnalysisRulesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Remover uma regra de análise' })
   @ApiResponse({
-    status: 200,
+    status: 200,: Promise<{
+    statusCode: number;
+    message: string;
+    data: unknown;
+  }>
     description: 'Regra de análise removida com sucesso',
   })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
