@@ -8,22 +8,37 @@ import {
   Delete,
   HttpStatus,
   HttpCode,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { RepositoriesService } from './repositories.service';
 import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { UpdateRepositoryDto } from './dto/update-repository.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('repositories')
+@ApiBearerAuth()
 @Controller('repositories')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class RepositoriesController {
   constructor(private readonly repositoriesService: RepositoriesService) {}
 
   @Post()
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar um novo repositório' })
   @ApiResponse({ status: 201, description: 'Repositório criado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   async create(@Body() createRepositoryDto: CreateRepositoryDto) {
     const repository =
       await this.repositoriesService.create(createRepositoryDto);
@@ -40,6 +55,7 @@ export class RepositoriesController {
     status: 200,
     description: 'Lista de repositórios retornada com sucesso',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll() {
     const repositories = await this.repositoriesService.findAll();
     return {
@@ -52,6 +68,7 @@ export class RepositoriesController {
   @ApiOperation({ summary: 'Buscar um repositório por ID' })
   @ApiResponse({ status: 200, description: 'Repositório encontrado' })
   @ApiResponse({ status: 404, description: 'Repositório não encontrado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findOne(@Param('id') id: string) {
     const repository = await this.repositoriesService.findOne(id);
     return {
@@ -61,6 +78,7 @@ export class RepositoriesController {
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Atualizar um repositório' })
   @ApiResponse({
     status: 200,
@@ -68,6 +86,8 @@ export class RepositoriesController {
   })
   @ApiResponse({ status: 404, description: 'Repositório não encontrado' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   async update(
     @Param('id') id: string,
     @Body() updateRepositoryDto: UpdateRepositoryDto,
@@ -84,9 +104,12 @@ export class RepositoriesController {
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Remover um repositório (soft delete)' })
   @ApiResponse({ status: 200, description: 'Repositório removido com sucesso' })
   @ApiResponse({ status: 404, description: 'Repositório não encontrado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   async remove(@Param('id') id: string) {
     const repository = await this.repositoriesService.remove(id);
     return {

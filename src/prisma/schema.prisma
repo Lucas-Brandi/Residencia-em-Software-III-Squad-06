@@ -6,6 +6,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 // --- SISTEMA DE ACESSO ---
 model User {
   id             Int       @id @default(autoincrement())
@@ -13,7 +18,7 @@ model User {
   githubUsername String?   @map("github_username") // Username oficial do GitHub
   avatarUrl      String?   @map("avatar_url")      // Foto de perfil do GitHub
   password       String
-  role           String    // "admin" | "dev"
+  role           Role      @default(USER)
   resetToken     String?   @map("reset_token")
 
   // Relacionamentos
