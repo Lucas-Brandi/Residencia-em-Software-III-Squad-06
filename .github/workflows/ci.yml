@@ -29,11 +29,15 @@ jobs:
       - name: Instalar Dependências
         run: npm ci
 
-      # 4. Verifica o Lint (Padronização de código)
+      # 4. Compila o código TypeScript
+      - name: Compilar Código
+        run: npm run build
+
+      # 5. Verifica o Lint (Padronização de código)
       - name: Rodar Lint
         run: npm run lint
 
-      # 5. Executa os Testes Unitários
+      # 6. Executa os Testes Unitários
       # Se um teste falhar, o deploy nem acontece!
       - name: Rodar Testes
         run: npm run test
