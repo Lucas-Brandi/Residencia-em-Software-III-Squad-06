@@ -1,0 +1,45 @@
+# Nome da nossa automação
+name: CI - Backend Nest.js
+
+# Quando ela deve rodar? 
+on:
+  push:
+    branches: [ main ] # Quando houver push nestas branches
+  pull_request:
+    branches: [ main ] # Quando um PR for aberto para a main
+
+jobs:
+  build-and-test:
+    # O "computador" que o GitHub vai nos emprestar (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Copia o código do seu repositório para a máquina do GitHub
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      # 2. Instala o Node.js na versão correta
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Agiliza as próximas rodadas salvando o cache do npm
+
+      # 3. Instala as dependências (Equivalente ao seu npm install)
+      - name: Instalar Dependências
+        run: npm ci
+
+      # 4. Verifica o Lint (Padronização de código)
+      - name: Rodar Lint
+        run: npm run lint
+
+      # 5. Executa os Testes Unitários
+      # Se um teste falhar, o deploy nem acontece!
+      - name: Rodar Testes
+        run: npm run test
+env:
+  # Variáveis de ambiente necessárias para os testes
+    JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    GITHUB_API_TOKEN: ${{ secrets.GITHUB_API_TOKEN }}
+    IA_API_KEY: ${{ secrets.IA_API_KEY }}
+    Database_URL: ${{ secrets.Database_URL }}
