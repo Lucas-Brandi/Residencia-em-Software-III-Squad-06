@@ -45,14 +45,14 @@ export class AnalysisRulesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as regras de análise' })
-  @ApiResponse({: Promise<{
-    statusCode: number;
-    data: unknown;
-  }>
+  @ApiResponse({
     status: 200,
     description: 'Lista de regras de análise retornada com sucesso',
   })
-  async findAll(@Query('repositoryId') repositoryId?: string) {
+  async findAll(@Query('repositoryId') repositoryId?: string): Promise<{
+    statusCode: number;
+    data: unknown;
+  }> {
     const analysisRules = await this.analysisRulesService.findAll(repositoryId);
     return {
       statusCode: HttpStatus.OK,
@@ -105,15 +105,15 @@ export class AnalysisRulesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Remover uma regra de análise' })
   @ApiResponse({
-    status: 200,: Promise<{
-    statusCode: number;
-    message: string;
-    data: unknown;
-  }>
+    status: 200,
     description: 'Regra de análise removida com sucesso',
   })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string): Promise<{
+    statusCode: number;
+    message: string;
+    data: unknown;
+  }> {
     const analysisRule = await this.analysisRulesService.remove(id);
     return {
       statusCode: HttpStatus.OK,
