@@ -44,11 +44,11 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'Função do usuário no sistema',
-    enum: ['admin', 'dev'],
-    example: 'dev',
+    enum: ['USER', 'ADMIN'],
+    example: 'USER',
   })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['admin', 'dev'])
-  role: 'admin' | 'dev';
+  @IsIn(['USER', 'ADMIN'])
+  role: 'USER' | 'ADMIN';
 }
