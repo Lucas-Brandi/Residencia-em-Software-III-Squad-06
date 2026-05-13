@@ -29,6 +29,9 @@ jobs:
       - name: Instalar Dependências
         run: npm ci
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       # 4. Compila o código TypeScript
       - name: Compilar Código
         run: npm run build
