@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { UpdateApiKeyDto } from './dto/update-api-key.dto';
+import { UpdateApiKeyResponseDto } from './dto/update-api-key-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,11 +25,15 @@ export class SettingsController {
   @ApiOperation({ summary: 'Update API key (Admin only)' })
   @ApiResponse({
     status: 200,
-    description: 'API key updated successfully',
+    description: 'Chave de API atualizada com sucesso',
+    type: UpdateApiKeyResponseDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  updateApiKey(@Body() updateApiKeyDto: UpdateApiKeyDto) {
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
+  updateApiKey(
+    @Body() updateApiKeyDto: UpdateApiKeyDto,
+  ): UpdateApiKeyResponseDto {
     return this.settingsService.updateApiKey(updateApiKeyDto.apiKey);
   }
 }
