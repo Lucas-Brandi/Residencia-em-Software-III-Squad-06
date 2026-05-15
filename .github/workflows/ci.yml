@@ -9,7 +9,7 @@ on:
     branches: [ main ] # Quando um PR for aberto para a main
 
 jobs:
-  build-and-test:
+  ci - build-and-test:
     # O "computador" que o GitHub vai nos emprestar (Linux)
     runs-on: ubuntu-latest
 
@@ -44,6 +44,12 @@ jobs:
       # Se um teste falhar, o deploy nem acontece!
       - name: Rodar Testes
         run: npm run test
+
+ci - build docker image and publish:
+
+cd - deploy to railway:
+
+
 env:
   # Variáveis de ambiente necessárias para os testes
     JWT_SECRET: ${{ secrets.JWT_SECRET }}

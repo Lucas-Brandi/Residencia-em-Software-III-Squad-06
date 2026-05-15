@@ -9,9 +9,14 @@ async function bootstrap() {
 
   // Enable CORS with specified settings
   app.enableCors({
-    origin: '*',
+    origin: [
+      'https://diffy-ai-front-production.up.railway.app',
+      'http://localhost:3000',
+      'http://localhost:5173',
+    ],
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
   app.useGlobalPipes(
