@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import { TestAiDto } from './dto/test-ai.dto';
+import { UpdateAiConfigResponseDto } from './dto/update-ai-config-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -38,10 +39,13 @@ export class AIController {
   @ApiResponse({
     status: 200,
     description: 'AI configuration updated successfully',
+    type: UpdateAiConfigResponseDto,
   })
-  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  updateConfig(@Body() config: { rigidity?: number; parameters?: any }) {
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
+  updateConfig(
+    @Body() config: { rigidity?: number; parameters?: any },
+  ): UpdateAiConfigResponseDto {
     return { message: 'AI configuration updated', config };
   }
 }
