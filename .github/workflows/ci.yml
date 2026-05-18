@@ -10,10 +10,7 @@ on:
   workflow_dispatch:   # Quando um PR for aberto para a main
 env:
   # Variáveis de ambiente necessárias para os testes
-  JWT_SECRET: ${{ secrets.JWT_SECRET }}
-  GITHUB_API_TOKEN: ${{ secrets.GITHUB_API_TOKEN }}
-  AI_API_KEY: ${{ secrets.AI_API_KEY }}
-  DATABASE_URL: ${{ secrets.Database_URL }}  
+  
   RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
   SERVICE_NAME: automacao-de-pr-com-ia
 
