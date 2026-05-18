@@ -15,6 +15,7 @@ env:
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
   DATABASE_URL: ${{ secrets.Database_URL }}  
   RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+  SERVICE_NAME: automacao-de-pr-com-ia
 
   # ------------------------------------------------------------
 # JOB 1: Testes e Validação do Código
@@ -73,7 +74,7 @@ jobs:
 
       - name: Trigger Railway Deploy
         # Substitua 'automacao-de-pr-com-ia' se o nome do seu serviço no Railway for diferente
-        run: railway up --detach 
+        run: railway up --service ${{ env.SERVICE_NAME }} --detach
         env:
           RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN }}
   
