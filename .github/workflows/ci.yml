@@ -7,7 +7,7 @@ on:
     branches: [ main ] # Quando houver push nestas branches
   pull_request:
     branches: [ main ]
-  workflow_dispatch   # Quando um PR for aberto para a main
+  workflow_dispatch:   # Quando um PR for aberto para a main
 env:
   # Variáveis de ambiente necessárias para os testes
   JWT_SECRET: ${{ secrets.JWT_SECRET }}
