@@ -27,11 +27,22 @@ async function bootstrap() {
     }),
   );
   const config = new DocumentBuilder()
-    .setTitle('Cats example')
-    .setDescription('The cats API description')
+    .setTitle('Automação de PR com IA — API')
+    .setDescription(
+      'API do sistema de análise automatizada de Pull Requests com IA',
+    )
     .setVersion('1.0')
-    .addTag('cats')
-    .addBearerAuth() // Enable Bearer Auth in Swagger
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'access-token',
+    )
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);

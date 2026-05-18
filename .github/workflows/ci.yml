@@ -43,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma Client
-        run: npx prisma generate
+        run: npx prisma generate --config prisma.config.ts
 
       # 4. Compila o código TypeScript
       - name: Compilar Código

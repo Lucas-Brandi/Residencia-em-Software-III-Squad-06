@@ -14,7 +14,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('ai')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 @Controller('ai')
 export class AIController {
   constructor(private readonly aiService: AIService) {}

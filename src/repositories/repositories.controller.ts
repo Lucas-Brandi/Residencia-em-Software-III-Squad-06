@@ -25,7 +25,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('repositories')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 @Controller('repositories')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class RepositoriesController {
