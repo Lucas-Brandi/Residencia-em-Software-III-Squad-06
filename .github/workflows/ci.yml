@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test # SÓ RODA SE OS TESTES PASSAREM!
     # Só envia para o Docker Hub em commits na main (evita rodar em Pull Requests abertos)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    #if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout do Código
