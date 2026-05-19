@@ -32,7 +32,9 @@ async function bootstrap() {
   // ─── SWAGGER ─────────────────────────────────────────────────────────────
   const config = new DocumentBuilder()
     .setTitle('Automação de PR com IA — API')
-    .setDescription('API do sistema de análise automatizada de Pull Requests com IA')
+    .setDescription(
+      'API do sistema de análise automatizada de Pull Requests com IA',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -56,4 +58,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();

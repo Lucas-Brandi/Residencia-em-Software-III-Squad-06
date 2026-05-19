@@ -43,7 +43,7 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
 
-    const { ...userWithoutPassword } = user;
+    const { password: _, ...userWithoutPassword } = user;
 
     return {
       accessToken,
@@ -65,7 +65,7 @@ export class AuthService {
         return null;
       }
 
-      const { password, ...userWithoutPassword } = user;
+      const { password: _, ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
       console.error('[validateUser] Database error:', error);
@@ -101,7 +101,7 @@ export class AuthService {
     });
 
     // Exclude password from response
-    const { ...userWithoutPassword } = newUser;
+    const { password: _, ...userWithoutPassword } = newUser;
 
     return userWithoutPassword;
   }
