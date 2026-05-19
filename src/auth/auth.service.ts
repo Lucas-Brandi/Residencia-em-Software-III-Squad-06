@@ -56,16 +56,21 @@ export class AuthService {
   }
 
   async validateUser(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+      if (!user) {
+        return null;
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      console.error('[validateUser] Database error:', error);
+      return null;
     }
-
-    const { ...userWithoutPassword } = user;
-    return userWithoutPassword;
   }
 
   /**
