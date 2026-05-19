@@ -26,7 +26,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('teams')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 @Controller('teams')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TeamsController {

@@ -25,7 +25,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('pull-requests')
-@ApiBearerAuth()
+@ApiBearerAuth('access-token')
 @Controller('pull-requests')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PullRequestsController {
