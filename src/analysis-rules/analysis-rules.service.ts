@@ -52,16 +52,13 @@ export class AnalysisRulesService {
       });
 
       return analysisRule;
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2003') {
           throw new BadRequestException('Invalid foreign key reference');
         }
       }
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred');
+      throw error;
     }
   }
 
@@ -168,16 +165,13 @@ export class AnalysisRulesService {
       });
 
       return analysisRule;
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2003') {
           throw new BadRequestException('Invalid foreign key reference');
         }
       }
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('An unexpected error occurred');
+      throw error;
     }
   }
 

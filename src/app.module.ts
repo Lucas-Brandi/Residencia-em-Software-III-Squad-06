@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { GithubWebhookModule } from './webhook/github-webhook.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { RepositoriesModule } from './repositories/repositories.module';
@@ -10,12 +9,10 @@ import { TeamsModule } from './teams/teams.module';
 import { PullRequestsModule } from './pull-requests/pull-requests.module';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
 import { AIModule } from './AI/ai.module';
-import { AuthModule } from './auth/auth.module';
-import { SettingsModule } from './settings/settings.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
-    GithubWebhookModule,
     AIModule,
     PrismaModule,
     UsersModule,
@@ -24,8 +21,7 @@ import { SettingsModule } from './settings/settings.module';
     TeamsModule,
     PullRequestsModule,
     AnalysisResultsModule,
-    AuthModule,
-    SettingsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

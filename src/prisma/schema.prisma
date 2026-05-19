@@ -1,15 +1,9 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-}
-
-enum Role {
-  USER
-  ADMIN
 }
 
 // --- SISTEMA DE ACESSO ---
@@ -19,7 +13,7 @@ model User {
   githubUsername String?   @map("github_username") // Username oficial do GitHub
   avatarUrl      String?   @map("avatar_url")      // Foto de perfil do GitHub
   password       String
-  role           Role      @default(USER)
+  role           String    // "admin" | "dev"
   resetToken     String?   @map("reset_token")
 
   // Relacionamentos
@@ -124,4 +118,15 @@ model AnalysisResult {
   reviewedBy  User?       @relation("ReviewedBy", fields: [reviewedById], references: [id])
 
   @@map("analysis_results")
+}
+
+// --- CONFIGURAÇÕES DO SISTEMA ---
+model Config {
+  id        String   @id @default(uuid())
+  key       String   @unique // Ex: "Rigidez da Análise"
+  value     String   // Valor da configuração (pode ser JSON, número, texto)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configs")
 }
