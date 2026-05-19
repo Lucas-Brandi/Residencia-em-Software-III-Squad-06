@@ -7,13 +7,13 @@ import { AuthService } from '../auth.service';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly authService: AuthService) {
     const secret = process.env.JWT_SECRET;
-    if (!secret) {
+    if (!secret && process.env.NODE_ENV === 'production') {
       throw new Error('JWT_SECRET environment variable is not defined');
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      secretOrKey: secret ?? 'dev-secret-inseguro-nao-use-em-prod',
     });
   }
 
