@@ -10,11 +10,15 @@ import { PullRequestsModule } from './pull-requests/pull-requests.module';
 import { AnalysisResultsModule } from './analysis-results/analysis-results.module';
 import { AIModule } from './AI/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuthModule } from './auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
     AIModule,
     PrismaModule,
+    AuthModule,
     UsersModule,
     RepositoriesModule,
     AnalysisRulesModule,
@@ -24,6 +28,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DashboardModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}

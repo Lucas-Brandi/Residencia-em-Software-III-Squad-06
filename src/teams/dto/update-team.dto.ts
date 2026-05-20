@@ -1,9 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateTeamDto } from './create-team.dto';
-import { IsString, IsOptional } from 'class-validator';
 
-export class UpdateTeamDto extends PartialType(CreateTeamDto) {
-  @IsString()
-  @IsOptional()
-  name?: string;
-}
+export class UpdateTeamDto extends PartialType(CreateTeamDto) {}

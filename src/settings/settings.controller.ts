@@ -4,6 +4,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { UpdateApiKeyDto } from './dto/update-api-key.dto';
@@ -23,6 +24,7 @@ export class SettingsController {
   @Put('api-key')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update API key (Admin only)' })
+  @ApiBody({ type: UpdateApiKeyDto })
   @ApiResponse({
     status: 200,
     description: 'Chave de API atualizada com sucesso',

@@ -1,5 +1,12 @@
 import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiHeader,
+  ApiBody,
+} from '@nestjs/swagger';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @ApiTags('webhook')
 @Controller('webhook/github')
@@ -7,7 +14,22 @@ export class GithubWebhookController {
   @Post()
   @HttpCode(200)
   @ApiOperation({ summary: 'Receber webhook do GitHub' })
+  @ApiHeader({
+    name: 'x-github-event',
+    description: 'Tipo do evento GitHub (ex.: pull_request)',
+    required: false,
+  })
+  @ApiHeader({
+    name: 'x-github-delivery',
+    description: 'ID único da entrega do webhook',
+    required: false,
+  })
+  @ApiBody({
+    description: 'Payload JSON enviado pelo GitHub',
+    schema: { type: 'object', additionalProperties: true },
+  })
   @ApiResponse({ status: 200, description: 'Webhook processado com sucesso' })
+  @Public()
   async handleWebhook(
     @Headers('x-github-event') event: string,
     @Headers('x-github-delivery') deliveryId: string,
