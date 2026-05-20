@@ -12,6 +12,8 @@ export class PrismaService
   constructor() {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
+      idleTimeoutMillis: 30000, // Fecha conexões ociosas após 30 segundos
+      connectionTimeoutMillis: 5000, // Desiste de tentar conectar após 5 segundos
     });
     const adapter = new PrismaPg(pool);
     super({ adapter });
