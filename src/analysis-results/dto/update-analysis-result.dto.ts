@@ -1,37 +1,12 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { IsNumber, IsOptional } from 'class-validator';
 import { CreateAnalysisResultDto } from './create-analysis-result.dto';
-import {
-  IsString,
-  IsOptional,
-  IsUUID,
-  IsNumber,
-  Min,
-  Max,
-  IsIn,
-} from 'class-validator';
 
-export class UpdateAnalysisResultDto extends PartialType(
-  CreateAnalysisResultDto,
-) {
-  @IsUUID()
-  @IsOptional()
-  prId?: string;
-
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  @IsOptional()
-  healthScore?: number;
-
-  @IsString()
-  @IsOptional()
-  iaFeedback?: string;
-
-  @IsString()
-  @IsOptional()
-  @IsIn(['pendente', 'aprovado', 'rejeitado'])
-  status?: 'pendente' | 'aprovado' | 'rejeitado';
-
+export class UpdateAnalysisResultDto extends PartialType(CreateAnalysisResultDto) {
+  @ApiPropertyOptional({
+    description: 'ID do revisor (usuário)',
+    example: 1,
+  })
   @IsNumber()
   @IsOptional()
   reviewedById?: number;
