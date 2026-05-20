@@ -10,6 +10,8 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [
     PrismaModule,
     PassportModule,
+    // JwtModule configurado com o accessToken (curta duração)
+    // O refreshToken é assinado/verificado manualmente no AuthService
     JwtModule.registerAsync({
       useFactory: () => {
         const secret = process.env.JWT_SECRET;
@@ -19,7 +21,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         return {
           secret: secret ?? 'dev-secret-inseguro-nao-use-em-prod',
           signOptions: {
-            expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as `${number}h`,
+            expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as any,
           },
         };
       },
@@ -27,6 +29,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}
