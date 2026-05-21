@@ -1,5 +1,19 @@
-import { IsString, IsNotEmpty, IsUUID, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsUUID,
+  IsNumber,
+  IsEnum,
+  IsBoolean,
+  IsOptional,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum Severity {
+  CRITICO = 'CRITICO',
+  AVISO = 'AVISO',
+  INFO = 'INFO',
+}
 
 export class CreateAnalysisRuleDto {
   @ApiProperty({
@@ -10,7 +24,7 @@ export class CreateAnalysisRuleDto {
   @IsNotEmpty()
   repositoryId: string;
 
-  @ApiProperty({ description: 'Tipo da regra', example: 'naming' })
+  @ApiProperty({ description: 'Tipo/categoria da regra', example: 'Qualidade' })
   @IsString()
   @IsNotEmpty()
   ruleType: string;
@@ -27,4 +41,21 @@ export class CreateAnalysisRuleDto {
   @IsNumber()
   @IsNotEmpty()
   createdById: number;
+
+  @ApiPropertyOptional({
+    description: 'Gravidade da regra',
+    enum: Severity,
+    default: Severity.AVISO,
+  })
+  @IsEnum(Severity)
+  @IsOptional()
+  severity?: Severity;
+
+  @ApiPropertyOptional({
+    description: 'Indica se a regra está ativa',
+    default: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
