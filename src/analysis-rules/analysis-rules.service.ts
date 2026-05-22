@@ -4,7 +4,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateAnalysisRuleDto } from './dto/create-analysis-rule.dto';
+import {
+  CreateAnalysisRuleDto,
+  Severity,
+} from './dto/create-analysis-rule.dto';
 import { UpdateAnalysisRuleDto } from './dto/update-analysis-rule.dto';
 import { Prisma } from '@prisma/client';
 
@@ -30,86 +33,43 @@ export class AnalysisRulesService {
     }
 
     try {
-      const analysisRule = await this.prisma.analysisRule.create({
+      return await this.prisma.analysisRule.create({
         data: {
           repositoryId: createAnalysisRuleDto.repositoryId,
           ruleType: createAnalysisRuleDto.ruleType,
           content: createAnalysisRuleDto.content,
           createdById: createAnalysisRuleDto.createdById,
+          severity: createAnalysisRuleDto.severity ?? Severity.AVISO,
+          isActive: createAnalysisRuleDto.isActive ?? true,
         },
-        include: {
-          repository: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              githubUsername: true,
-              avatarUrl: true,
-              role: true,
-            },
-          },
-        },
+        include: this.defaultInclude(),
       });
-
-      return analysisRule;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2003') {
-          throw new BadRequestException('Invalid foreign key reference');
-        }
-      }
-      throw error;
+      this.handlePrismaError(error);
     }
   }
 
   async findAll(repositoryId?: string) {
     const where: Prisma.AnalysisRuleWhereInput = {};
+    if (repositoryId) where.repositoryId = repositoryId;
 
-    if (repositoryId) {
-      where.repositoryId = repositoryId;
-    }
-
-    const analysisRules = await this.prisma.analysisRule.findMany({
+    return this.prisma.analysisRule.findMany({
       where,
-      include: {
-        repository: true,
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.defaultInclude(),
     });
-
-    return analysisRules;
   }
 
   async findOne(id: string) {
-    const analysisRule = await this.prisma.analysisRule.findUnique({
+    const rule = await this.prisma.analysisRule.findUnique({
       where: { id },
-      include: {
-        repository: true,
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.defaultInclude(),
     });
 
-    if (!analysisRule) {
+    if (!rule) {
       throw new NotFoundException(`Analysis rule with ID ${id} not found`);
     }
 
-    return analysisRule;
+    return rule;
   }
 
   async update(id: string, updateAnalysisRuleDto: UpdateAnalysisRuleDto) {
@@ -125,7 +85,6 @@ export class AnalysisRulesService {
       const repository = await this.prisma.repository.findUnique({
         where: { id: updateAnalysisRuleDto.repositoryId },
       });
-
       if (!repository) {
         throw new BadRequestException('Repository not found');
       }
@@ -135,43 +94,26 @@ export class AnalysisRulesService {
       const user = await this.prisma.user.findUnique({
         where: { id: updateAnalysisRuleDto.createdById },
       });
-
       if (!user) {
         throw new BadRequestException('User not found');
       }
     }
 
     try {
-      const analysisRule = await this.prisma.analysisRule.update({
+      return await this.prisma.analysisRule.update({
         where: { id },
         data: {
           repositoryId: updateAnalysisRuleDto.repositoryId,
           ruleType: updateAnalysisRuleDto.ruleType,
           content: updateAnalysisRuleDto.content,
           createdById: updateAnalysisRuleDto.createdById,
+          severity: updateAnalysisRuleDto.severity,
+          isActive: updateAnalysisRuleDto.isActive,
         },
-        include: {
-          repository: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              githubUsername: true,
-              avatarUrl: true,
-              role: true,
-            },
-          },
-        },
+        include: this.defaultInclude(),
       });
-
-      return analysisRule;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2003') {
-          throw new BadRequestException('Invalid foreign key reference');
-        }
-      }
-      throw error;
+      this.handlePrismaError(error);
     }
   }
 
@@ -184,10 +126,34 @@ export class AnalysisRulesService {
       throw new NotFoundException(`Analysis rule with ID ${id} not found`);
     }
 
-    await this.prisma.analysisRule.delete({
-      where: { id },
-    });
+    await this.prisma.analysisRule.delete({ where: { id } });
 
     return existingRule;
+  }
+
+  // ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+  private defaultInclude() {
+    return {
+      repository: true,
+      createdBy: {
+        select: {
+          id: true,
+          username: true,
+          githubUsername: true,
+          avatarUrl: true,
+          role: true,
+        },
+      },
+    };
+  }
+
+  private handlePrismaError(error: any): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2003') {
+        throw new BadRequestException('Invalid foreign key reference');
+      }
+    }
+    throw error;
   }
 }
