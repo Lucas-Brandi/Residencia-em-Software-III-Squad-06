@@ -17,16 +17,24 @@ enum Severity {
   INFO
 }
 
+enum UserStatus {
+  ATIVO
+  PENDENTE
+  INATIVO
+}
+
 // --- SISTEMA DE ACESSO ---
 model User {
   id             Int       @id @default(autoincrement())
   username       String    @unique
-  githubUsername String?   @map("github_username") // Username oficial do GitHub
-  avatarUrl      String?   @map("avatar_url")      // Foto de perfil do GitHub
+  githubUsername String?   @map("github_username") 
+  avatarUrl      String?   @map("avatar_url")      
   password       String
   role           Role      @default(USER)
   resetToken     String?   @map("reset_token")
   refreshToken   String?   @map("refresh_token")
+  email          String?   @unique   
+  status         UserStatus @default(PENDENTE) 
 
   // Relacionamentos
   teams           TeamUser[]
