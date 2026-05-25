@@ -1,19 +1,47 @@
-import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common';
+import * as crypto from 'crypto';
 import {
-  ApiTags,
+  Body,
+  Controller,
+  Headers,
+  HttpCode,
+  Logger,
+  Post,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiHeader,
   ApiOperation,
   ApiResponse,
-  ApiHeader,
-  ApiBody,
+  ApiTags,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { AIService } from 'src/AI/ai.service';
+import { GithubAppService } from 'src/github/github-app.service';
 
 @ApiTags('webhook')
+@Public()
 @Controller('webhook/github')
 export class GithubWebhookController {
+  private readonly logger = new Logger(GithubWebhookController.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AIService,
+    private readonly githubAppService: GithubAppService,
+  ) {}
+
   @Post()
   @HttpCode(200)
   @ApiOperation({ summary: 'Receber webhook do GitHub' })
+  @ApiHeader({
+    name: 'x-hub-signature-256',
+    description: 'Assinatura HMAC-SHA256 do payload (obrigatória)',
+    required: true,
+  })
   @ApiHeader({
     name: 'x-github-event',
     description: 'Tipo do evento GitHub (ex.: pull_request)',
@@ -29,73 +57,139 @@ export class GithubWebhookController {
     schema: { type: 'object', additionalProperties: true },
   })
   @ApiResponse({ status: 200, description: 'Webhook processado com sucesso' })
-  @Public()
+  @ApiResponse({ status: 401, description: 'Assinatura de webhook inválida' })
   async handleWebhook(
+    @Headers('x-hub-signature-256') signature: string,
     @Headers('x-github-event') event: string,
     @Headers('x-github-delivery') deliveryId: string,
     @Body() payload: Record<string, any>,
+    @Req() req: Request,
   ) {
-    const action = payload?.action;
-    const prNumber = payload?.pull_request?.number;
-    const diffUrl = payload?.pull_request?.diff_url as string | undefined;
-    const actionDate =
-      payload?.pull_request?.updated_at || payload?.repository?.pushed_at;
-    const githubToken = process.env.GITHUB_TOKEN;
-    const prAuthor = payload?.pull_request?.user?.login;
-    const repositoryId = payload?.repository?.id;
-    const repositoryName = payload?.repository?.full_name;
-    let diff: string | null = null;
-    let diffError: string | null = null;
-
-    if (event === 'pull_request' && diffUrl) {
-      try {
-        const response = await fetch(diffUrl, {
-          headers: {
-            Accept: 'application/vnd.github.v3.diff',
-            ...(githubToken ? { Authorization: `Bearer ${githubToken}` } : {}),
-          },
-        });
-
-        if (!response.ok) {
-          diffError = `GitHub diff request failed with status ${response.status}`;
-        } else {
-          diff = await response.text();
-        }
-      } catch (error) {
-        diffError =
-          error instanceof Error
-            ? error.message
-            : 'Unknown error fetching diff';
+    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const hmac = crypto
+        .createHmac('sha256', webhookSecret)
+        .update((req as any).rawBody ?? Buffer.alloc(0))
+        .digest('hex');
+      const expected = `sha256=${hmac}`;
+      if (
+        !signature ||
+        !crypto.timingSafeEqual(
+          Buffer.from(expected),
+          Buffer.from(signature),
+        )
+      ) {
+        throw new UnauthorizedException('Assinatura de webhook inválida');
       }
     }
 
-    console.log('[GitHub Webhook]', {
-      event,
-      repositoryId,
-      repositoryName,
-      deliveryId,
-      action,
-      actionDate,
-      prNumber,
-      prAuthor,
-      diffLength: diff?.length ?? 0,
-      diffPreview: diff?.slice(0, 300),
-      diffError,
+    if (event !== 'pull_request') {
+      return { received: true };
+    }
+
+    const action = payload?.action as string | undefined;
+    if (action !== 'opened' && action !== 'synchronize' && action !== 'reopened') {
+      return { received: true };
+    }
+
+    const prNumber = payload?.pull_request?.number as number;
+    const owner = payload?.repository?.owner?.login as string | undefined;
+    const repo = payload?.repository?.name as string | undefined;
+    const repositoryGithubId = payload?.repository?.id as number | undefined;
+
+    this.logger.log(
+      `[Webhook] PR #${prNumber} (${action}) em ${owner}/${repo} (githubId: ${repositoryGithubId})`,
+    );
+
+    if (!owner || !repo || !repositoryGithubId || !prNumber) {
+      this.logger.warn('Payload incompleto — campos obrigatórios ausentes');
+      return { received: true };
+    }
+
+    let diff = '';
+    try {
+      const installationToken =
+        await this.githubAppService.getInstallationToken();
+      const diffResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+        {
+          headers: {
+            Accept: 'application/vnd.github.v3.diff',
+            Authorization: `Bearer ${installationToken}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        },
+      );
+
+      if (diffResponse.ok) {
+        diff = await diffResponse.text();
+      } else {
+        this.logger.warn(
+          `Falha ao buscar diff: ${diffResponse.status}`,
+        );
+      }
+    } catch (err) {
+      this.logger.error('Erro ao buscar diff do PR', err);
+    }
+
+    if (!diff) {
+      this.logger.warn(
+        `Diff indisponível para PR #${prNumber} — análise ignorada`,
+      );
+      return { received: true };
+    }
+
+    const repository = await this.prisma.repository.findUnique({
+      where: { githubId: repositoryGithubId },
     });
 
-    return {
-      received: true,
-      event,
-      repositoryId,
-      repositoryName,
-      deliveryId,
-      action,
-      actionDate,
-      prNumber,
-      prAuthor,
-      diffLength: diff?.length ?? 0,
-      diffPreview: diff?.slice(0, 300),
-      diffError,
-    };
+    if (!repository) {
+      this.logger.warn(
+        `Repositório com githubId ${repositoryGithubId} não encontrado no banco`,
+      );
+      return { received: true };
+    }
+
+    const rules = await this.prisma.analysisRule.findMany({
+      where: { repositoryId: repository.id },
+    });
+
+    if (!rules.length) {
+      this.logger.log(
+        `Nenhuma regra cadastrada para "${repository.name}" — análise focada em segurança`,
+      );
+    }
+
+    const ruleContents = rules.map((r) => r.content);
+    const aiResult = await this.aiService.analyzeCode(diff, ruleContents);
+
+    const score = aiResult.healthScore;
+    const scoreEmoji = score >= 80 ? '✅' : score >= 50 ? '⚠️' : '❌';
+    const commentBody = [
+      '## DiffyAI - Analysis Result',
+      '',
+      `${scoreEmoji} **Health Score: ${score}/100**`,
+      '',
+      aiResult.feedback,
+      '',
+      '---',
+      '*Analysis generated automatically by the DiffyAI Bot*',
+    ].join('\n');
+
+    try {
+      await this.githubAppService.postPRComment(
+        owner,
+        repo,
+        prNumber,
+        commentBody,
+      );
+      this.logger.log(
+        `Comentário de análise postado no PR #${prNumber} de ${owner}/${repo}`,
+      );
+    } catch (err) {
+      this.logger.error('Erro ao postar comentário no PR', err);
+    }
+
+    return { received: true, analysed: true, healthScore: score };
   }
 }
