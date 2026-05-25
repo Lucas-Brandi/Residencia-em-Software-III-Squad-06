@@ -17,6 +17,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request } from 'express';
+
+interface RawBodyRequest extends Request {
+  rawBody?: Buffer;
+}
 import { Public } from 'src/auth/decorators/public.decorator';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AIService } from 'src/AI/ai.service';
@@ -63,13 +67,14 @@ export class GithubWebhookController {
     @Headers('x-github-event') event: string,
     @Headers('x-github-delivery') deliveryId: string,
     @Body() payload: Record<string, any>,
-    @Req() req: Request,
+    @Req() req: RawBodyRequest,
   ) {
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
     if (webhookSecret) {
+      const rawBody: Buffer = req.rawBody ?? Buffer.alloc(0);
       const hmac = crypto
         .createHmac('sha256', webhookSecret)
-        .update((req as any).rawBody ?? Buffer.alloc(0))
+        .update(rawBody)
         .digest('hex');
       const expected = `sha256=${hmac}`;
       if (
