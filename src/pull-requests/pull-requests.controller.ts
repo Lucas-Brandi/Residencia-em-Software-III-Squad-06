@@ -15,12 +15,14 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { PullRequestsService } from './pull-requests.service';
 import { CreatePullRequestDto } from './dto/create-pull-request.dto';
 import { UpdatePullRequestDto } from './dto/update-pull-request.dto';
 
 @ApiTags('Pull Requests')
+@ApiBearerAuth('access-token')
 @Controller('pull-requests')
 export class PullRequestsController {
   constructor(private readonly pullRequestsService: PullRequestsService) {}
@@ -29,10 +31,7 @@ export class PullRequestsController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar pull request' })
   @ApiBody({ type: CreatePullRequestDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Pull request criado com sucesso',
-  })
+  @ApiResponse({ status: 201, description: 'Pull request criado com sucesso' })
   @ApiResponse({
     status: 400,
     description: 'Dados inválidos ou referência inexistente',
@@ -55,10 +54,7 @@ export class PullRequestsController {
   })
   async findAll() {
     const pullRequests = await this.pullRequestsService.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: pullRequests,
-    };
+    return { statusCode: HttpStatus.OK, data: pullRequests };
   }
 
   @Get(':id')
@@ -68,10 +64,52 @@ export class PullRequestsController {
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async findOne(@Param('id') id: string) {
     const pullRequest = await this.pullRequestsService.findOne(id);
-    return {
-      statusCode: HttpStatus.OK,
-      data: pullRequest,
-    };
+    return { statusCode: HttpStatus.OK, data: pullRequest };
+  }
+
+  // ─── ENDPOINT DA TELA DE PR ANALYSIS ──────────────────────────────────────
+
+  @Get(':id/analysis')
+  @ApiOperation({
+    summary: 'Buscar PR com resultado completo da análise da IA',
+    description:
+      'Retorna o PR junto com o feedback mais recente da IA (healthScore, iaFeedback, status) ' +
+      'e o histórico completo de análises. Usado pela tela de pr-analysis.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID do pull request', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'PR com análise retornado com sucesso',
+    schema: {
+      properties: {
+        id: { type: 'string' },
+        prNumber: { type: 'number' },
+        title: { type: 'string' },
+        status: { type: 'string' },
+        analysis: {
+          type: 'object',
+          nullable: true,
+          properties: {
+            id: { type: 'string' },
+            healthScore: { type: 'number', example: 87 },
+            iaFeedback: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: ['pendente', 'aprovado', 'rejeitado'],
+            },
+            reviewedBy: { type: 'object', nullable: true },
+            reviewedAt: { type: 'string', format: 'date-time', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        analysisHistory: { type: 'array' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
+  async findOneWithAnalysis(@Param('id') id: string) {
+    const data = await this.pullRequestsService.findOneWithAnalysis(id);
+    return { statusCode: HttpStatus.OK, data };
   }
 
   @Patch(':id')
@@ -81,10 +119,6 @@ export class PullRequestsController {
   @ApiResponse({
     status: 200,
     description: 'Pull request atualizado com sucesso',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Dados inválidos ou referência inexistente',
   })
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async update(

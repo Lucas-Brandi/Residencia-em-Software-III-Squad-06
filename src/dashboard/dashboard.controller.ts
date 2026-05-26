@@ -1,12 +1,21 @@
 import { Controller, Get, Query, HttpStatus } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { FilterDashboardDto } from './dto/filter-dashboard.dto';
-import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('Dashboard')
+@ApiBearerAuth('access-token')
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
+
+  // ─── LISTAGEM DE PRs ────────────────────────────────────────────────────────
 
   @Get()
   @ApiOperation({ summary: 'Buscar pull requests com filtros opcionais' })
@@ -31,9 +40,43 @@ export class DashboardController {
   })
   async findAll(@Query() filterDto: FilterDashboardDto) {
     const pullRequests = await this.dashboardService.findAll(filterDto);
-    return {
-      statusCode: HttpStatus.OK,
-      data: pullRequests,
-    };
+    return { statusCode: HttpStatus.OK, data: pullRequests };
+  }
+
+  // ─── MÉTRICAS DO ADMIN ──────────────────────────────────────────────────────
+
+  @Get('metrics')
+  @ApiOperation({
+    summary: 'Buscar métricas do admin (cards de estatísticas)',
+    description:
+      'Retorna totais, economia de tempo, health score médio e breakdown de status. ' +
+      'Usado pelos 4 cards de estatísticas da tela de administração.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Métricas retornadas com sucesso',
+    schema: {
+      properties: {
+        totalPRsAnalyzed: { type: 'number', example: 42 },
+        timeSavedHours: { type: 'number', example: 63 },
+        timeSavedFormatted: { type: 'string', example: '63h' },
+        avgHealthScore: { type: 'number', example: 78 },
+        approvalRate: { type: 'number', example: 85 },
+        statusBreakdown: {
+          type: 'object',
+          properties: {
+            approved: { type: 'number' },
+            rejected: { type: 'number' },
+            pending: { type: 'number' },
+          },
+        },
+        totalUsers: { type: 'number' },
+        totalActiveRules: { type: 'number' },
+      },
+    },
+  })
+  async getMetrics() {
+    const metrics = await this.dashboardService.getMetrics();
+    return { statusCode: HttpStatus.OK, data: metrics };
   }
 }
