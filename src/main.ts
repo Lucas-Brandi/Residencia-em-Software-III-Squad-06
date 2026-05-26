@@ -6,7 +6,17 @@ import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  app.use(
+    json({
+      limit: '5mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+  app.use(urlencoded({ extended: true, limit: '5mb' }));
 
   // ─── CORS ────────────────────────────────────────────────────────────────
   app.enableCors({
@@ -52,9 +62,6 @@ async function bootstrap() {
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
 
-  // ─── BODY SIZE ────────────────────────────────────────────────────────────
-  app.use(json({ limit: '5mb' }));
-  app.use(urlencoded({ extended: true, limit: '5mb' }));
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 3000);

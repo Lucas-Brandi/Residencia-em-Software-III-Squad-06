@@ -45,7 +45,10 @@ export class AIService {
         });
 
         if (config && config.key === 'Rigidez da Análise') {
-          temperature = parseFloat(config.value);
+          const parsed = parseFloat(config.value);
+          if (!isNaN(parsed) && parsed >= 0 && parsed <= 2) {
+            temperature = parsed;
+          }
         }
       }
 
@@ -78,8 +81,17 @@ export class AIService {
   }
 
   private buildSystemPrompt(rules: string[]): string {
-    return `You are a strict code review assistant. Analyze the provided code snippet based EXACTLY on the following rules:
-${rules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+    const securityRule =
+      'Always scan for security vulnerabilities such as SQL injection, XSS, insecure deserialization, hardcoded secrets, broken authentication, and any other OWASP Top 10 issues.';
+
+    const allRules = rules.length ? [...rules, securityRule] : [securityRule];
+
+    const focus = rules.length
+      ? 'Analyze the provided code snippet based EXACTLY on the following rules:'
+      : 'No custom rules are registered for this repository. Analyze the provided code snippet focusing exclusively on security vulnerabilities:';
+
+    return `You are a strict code review assistant. ${focus}
+${allRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
 
 You MUST respond with a valid JSON object containing exactly these two keys:
 - "healthScore": A number between 0 and 100 representing the overall code quality.
