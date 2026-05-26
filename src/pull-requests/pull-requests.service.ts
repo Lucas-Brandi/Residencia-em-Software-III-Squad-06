@@ -12,31 +12,59 @@ import { Prisma } from '@prisma/client';
 export class PullRequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // ─── Includes reutilizáveis ────────────────────────────────────────────────
+
+  private baseInclude() {
+    return {
+      repository: true,
+      author: {
+        select: {
+          id: true,
+          username: true,
+          githubUsername: true,
+          avatarUrl: true,
+          role: true,
+        },
+      },
+    };
+  }
+
+  private analysisInclude() {
+    return {
+      ...this.baseInclude(),
+      results: {
+        orderBy: { createdAt: 'desc' as const },
+        include: {
+          reviewedBy: {
+            select: {
+              id: true,
+              username: true,
+              avatarUrl: true,
+              role: true,
+            },
+          },
+        },
+      },
+    };
+  }
+
+  // ─── CREATE ───────────────────────────────────────────────────────────────
+
   async create(createPullRequestDto: CreatePullRequestDto) {
     const repository = await this.prisma.repository.findUnique({
       where: { id: createPullRequestDto.repositoryId },
     });
-
-    if (!repository) {
-      throw new BadRequestException('Repository not found');
-    }
+    if (!repository) throw new BadRequestException('Repository not found');
 
     const author = await this.prisma.user.findUnique({
       where: { id: createPullRequestDto.authorId },
     });
-
-    if (!author) {
-      throw new BadRequestException('Author (user) not found');
-    }
+    if (!author) throw new BadRequestException('Author (user) not found');
 
     const data: Prisma.PullRequestCreateInput = {
-      repository: {
-        connect: { id: createPullRequestDto.repositoryId },
-      },
+      repository: { connect: { id: createPullRequestDto.repositoryId } },
       prNumber: createPullRequestDto.prNumber,
-      author: {
-        connect: { id: createPullRequestDto.authorId },
-      },
+      author: { connect: { id: createPullRequestDto.authorId } },
       title: createPullRequestDto.title,
       githubUrl: createPullRequestDto.githubUrl,
       status: createPullRequestDto.status,
@@ -49,122 +77,112 @@ export class PullRequestsService {
       data.closedAt = new Date();
     }
 
-    const pullRequest = await this.prisma.pullRequest.create({
+    return this.prisma.pullRequest.create({
       data,
-      include: {
-        repository: true,
-        author: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
     });
-
-    return pullRequest;
   }
+
+  // ─── FIND ALL ─────────────────────────────────────────────────────────────
 
   async findAll() {
-    const pullRequests = await this.prisma.pullRequest.findMany({
-      include: {
-        repository: true,
-        author: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+    return this.prisma.pullRequest.findMany({
+      include: this.baseInclude(),
+      orderBy: { openedAt: 'desc' },
     });
-
-    return pullRequests;
   }
+
+  // ─── FIND ONE ─────────────────────────────────────────────────────────────
 
   async findOne(id: string) {
-    const pullRequest = await this.prisma.pullRequest.findUnique({
+    const pr = await this.prisma.pullRequest.findUnique({
       where: { id },
-      include: {
-        repository: true,
-        author: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
+    });
+    if (!pr)
+      throw new NotFoundException(`Pull request with ID ${id} not found`);
+    return pr;
+  }
+
+  // ─── FIND ONE WITH ANALYSIS (tela de pr-analysis) ─────────────────────────
+
+  async findOneWithAnalysis(id: string) {
+    const pr = await this.prisma.pullRequest.findUnique({
+      where: { id },
+      include: this.analysisInclude(),
     });
 
-    if (!pullRequest) {
+    if (!pr)
       throw new NotFoundException(`Pull request with ID ${id} not found`);
-    }
 
-    return pullRequest;
+    // Pega o resultado mais recente da IA
+    const latestResult = pr.results[0] ?? null;
+
+    return {
+      id: pr.id,
+      prNumber: pr.prNumber,
+      title: pr.title,
+      githubUrl: pr.githubUrl,
+      status: pr.status,
+      openedAt: pr.openedAt,
+      closedAt: pr.closedAt,
+      repository: pr.repository,
+      author: pr.author,
+      // Dados da análise da IA
+      analysis: latestResult
+        ? {
+            id: latestResult.id,
+            healthScore: latestResult.healthScore,
+            iaFeedback: latestResult.iaFeedback,
+            status: latestResult.status,
+            reviewedBy: latestResult.reviewedBy,
+            reviewedAt: latestResult.reviewedAt,
+            createdAt: latestResult.createdAt,
+          }
+        : null,
+      // Histórico completo de análises
+      analysisHistory: pr.results,
+    };
   }
+
+  // ─── UPDATE ───────────────────────────────────────────────────────────────
 
   async update(id: string, updatePullRequestDto: UpdatePullRequestDto) {
     const existingPR = await this.prisma.pullRequest.findUnique({
       where: { id },
     });
-
-    if (!existingPR) {
+    if (!existingPR)
       throw new NotFoundException(`Pull request with ID ${id} not found`);
-    }
 
     if (updatePullRequestDto.repositoryId) {
-      const repository = await this.prisma.repository.findUnique({
+      const repo = await this.prisma.repository.findUnique({
         where: { id: updatePullRequestDto.repositoryId },
       });
-
-      if (!repository) {
-        throw new BadRequestException('Repository not found');
-      }
+      if (!repo) throw new BadRequestException('Repository not found');
     }
 
     if (updatePullRequestDto.authorId) {
       const author = await this.prisma.user.findUnique({
         where: { id: updatePullRequestDto.authorId },
       });
-
-      if (!author) {
-        throw new BadRequestException('Author (user) not found');
-      }
+      if (!author) throw new BadRequestException('Author (user) not found');
     }
 
     const data: Prisma.PullRequestUpdateInput = {};
 
-    if (updatePullRequestDto.repositoryId) {
+    if (updatePullRequestDto.repositoryId)
       data.repository = { connect: { id: updatePullRequestDto.repositoryId } };
-    }
-
-    if (updatePullRequestDto.prNumber !== undefined) {
+    if (updatePullRequestDto.prNumber !== undefined)
       data.prNumber = updatePullRequestDto.prNumber;
-    }
-
-    if (updatePullRequestDto.authorId) {
+    if (updatePullRequestDto.authorId)
       data.author = { connect: { id: updatePullRequestDto.authorId } };
-    }
-
-    if (updatePullRequestDto.title !== undefined) {
+    if (updatePullRequestDto.title !== undefined)
       data.title = updatePullRequestDto.title;
-    }
-
-    if (updatePullRequestDto.githubUrl !== undefined) {
+    if (updatePullRequestDto.githubUrl !== undefined)
       data.githubUrl = updatePullRequestDto.githubUrl;
-    }
 
     if (updatePullRequestDto.status) {
       data.status = updatePullRequestDto.status;
-
       if (
         updatePullRequestDto.status === 'fechado' ||
         updatePullRequestDto.status === 'mergeado'
@@ -175,39 +193,23 @@ export class PullRequestsService {
       }
     }
 
-    const pullRequest = await this.prisma.pullRequest.update({
+    return this.prisma.pullRequest.update({
       where: { id },
       data,
-      include: {
-        repository: true,
-        author: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
     });
-
-    return pullRequest;
   }
+
+  // ─── REMOVE ───────────────────────────────────────────────────────────────
 
   async remove(id: string) {
     const existingPR = await this.prisma.pullRequest.findUnique({
       where: { id },
     });
-
-    if (!existingPR) {
+    if (!existingPR)
       throw new NotFoundException(`Pull request with ID ${id} not found`);
-    }
 
-    await this.prisma.pullRequest.delete({
-      where: { id },
-    });
-
+    await this.prisma.pullRequest.delete({ where: { id } });
     return existingPR;
   }
 }
