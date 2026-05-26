@@ -27,8 +27,6 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY package.json package-lock.json prisma.config.ts ./
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 3000
-CMD ["./docker-entrypoint.sh"]
+CMD ["node", "dist/main.js"]
