@@ -82,7 +82,7 @@ model Repository {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  team      Team           @relation(fields: [teamId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   rules     AnalysisRule[]
   prs       PullRequest[]
 
