@@ -149,7 +149,7 @@ export class AuthService {
   }) {
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET ?? 'dev-secret-inseguro-nao-use-em-prod',
-      expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as any,
+      expiresIn: (process.env.JWT_EXPIRES_IN ?? '1h') as any,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
