@@ -15,12 +15,14 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { RepositoriesService } from './repositories.service';
 import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { UpdateRepositoryDto } from './dto/update-repository.dto';
 
 @ApiTags('Repositories')
+@ApiBearerAuth('access-token')
 @Controller('repositories')
 export class RepositoriesController {
   constructor(private readonly repositoriesService: RepositoriesService) {}
@@ -30,7 +32,10 @@ export class RepositoriesController {
   @ApiOperation({ summary: 'Criar repositório' })
   @ApiBody({ type: CreateRepositoryDto })
   @ApiResponse({ status: 201, description: 'Repositório criado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos ou equipe inexistente' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou equipe inexistente',
+  })
   @ApiResponse({ status: 409, description: 'Repositório GitHub já cadastrado' })
   async create(@Body() createRepositoryDto: CreateRepositoryDto) {
     const repository =
@@ -44,7 +49,10 @@ export class RepositoriesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todos os repositórios' })
-  @ApiResponse({ status: 200, description: 'Lista de repositórios retornada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de repositórios retornada com sucesso',
+  })
   async findAll() {
     const repositories = await this.repositoriesService.findAll();
     return {
@@ -70,8 +78,14 @@ export class RepositoriesController {
   @ApiOperation({ summary: 'Atualizar repositório' })
   @ApiParam({ name: 'id', description: 'UUID do repositório', type: String })
   @ApiBody({ type: UpdateRepositoryDto })
-  @ApiResponse({ status: 200, description: 'Repositório atualizado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos ou equipe inexistente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Repositório atualizado com sucesso',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou equipe inexistente',
+  })
   @ApiResponse({ status: 404, description: 'Repositório não encontrado' })
   @ApiResponse({ status: 409, description: 'Repositório GitHub já cadastrado' })
   async update(
