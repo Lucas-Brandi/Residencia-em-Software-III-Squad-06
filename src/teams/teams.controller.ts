@@ -15,6 +15,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
@@ -22,6 +23,7 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddTeamMemberDto } from './dto/add-team-member.dto';
 
 @ApiTags('Teams')
+@ApiBearerAuth('access-token')
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
@@ -43,7 +45,10 @@ export class TeamsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as equipes' })
-  @ApiResponse({ status: 200, description: 'Lista de equipes retornada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de equipes retornada com sucesso',
+  })
   async findAll() {
     const teams = await this.teamsService.findAll();
     return {
@@ -117,9 +122,16 @@ export class TeamsController {
   @Delete(':id/members/:userId')
   @ApiOperation({ summary: 'Remover membro da equipe' })
   @ApiParam({ name: 'id', description: 'UUID da equipe', type: String })
-  @ApiParam({ name: 'userId', description: 'ID numérico do usuário', type: Number })
+  @ApiParam({
+    name: 'userId',
+    description: 'ID numérico do usuário',
+    type: Number,
+  })
   @ApiResponse({ status: 200, description: 'Membro removido com sucesso' })
-  @ApiResponse({ status: 404, description: 'Equipe não encontrada ou usuário não é membro' })
+  @ApiResponse({
+    status: 404,
+    description: 'Equipe não encontrada ou usuário não é membro',
+  })
   async removeMember(@Param('id') id: string, @Param('userId') userId: string) {
     const teamUser = await this.teamsService.removeMember(id, +userId);
     return {

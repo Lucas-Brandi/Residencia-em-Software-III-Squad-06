@@ -15,12 +15,14 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('Users')
+@ApiBearerAuth('access-token')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -43,7 +45,10 @@ export class UsersController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todos os usuários' })
-  @ApiResponse({ status: 200, description: 'Lista de usuários retornada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de usuários retornada com sucesso',
+  })
   async findAll() {
     const users = await this.usersService.findAll();
     return {

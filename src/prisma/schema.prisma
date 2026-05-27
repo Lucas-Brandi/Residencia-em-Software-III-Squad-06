@@ -34,7 +34,7 @@ model User {
   resetToken     String?   @map("reset_token")
   refreshToken   String?   @map("refresh_token")
   email          String?   @unique   
-  status         UserStatus @default(PENDENTE) 
+  status         UserStatus @default(ATIVO) 
 
   // Relacionamentos
   teams           TeamUser[]
