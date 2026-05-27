@@ -11,6 +11,7 @@ import { AnalysisResultsModule } from './analysis-results/analysis-results.modul
 import { AIModule } from './AI/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AuthModule } from './auth/auth.module';
+import { GithubWebhookModule } from './webhook/github-webhook.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
@@ -26,6 +27,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     PullRequestsModule,
     AnalysisResultsModule,
     DashboardModule,
+    GithubWebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
