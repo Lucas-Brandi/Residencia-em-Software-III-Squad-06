@@ -27,6 +27,7 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY package.json package-lock.json prisma.config.ts ./
+COPY prisma ./prisma
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
