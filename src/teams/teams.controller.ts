@@ -8,6 +8,7 @@ import {
   Delete,
   HttpStatus,
   HttpCode,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,19 +22,26 @@ import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 import { AddTeamMemberDto } from './dto/add-team-member.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('Teams')
 @ApiBearerAuth('access-token')
+@UseGuards(RolesGuard)
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
+  // ─── CREATE (ADMIN only) ───────────────────────────────────────────────────
+
   @Post()
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Criar equipe' })
+  @ApiOperation({ summary: 'Criar equipe (Admin only)' })
   @ApiBody({ type: CreateTeamDto })
   @ApiResponse({ status: 201, description: 'Equipe criada com sucesso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   async create(@Body() createTeamDto: CreateTeamDto) {
     const team = await this.teamsService.create(createTeamDto);
     return {
@@ -43,6 +51,8 @@ export class TeamsController {
     };
   }
 
+  // ─── GET ALL (todos logados) ───────────────────────────────────────────────
+
   @Get()
   @ApiOperation({ summary: 'Listar todas as equipes' })
   @ApiResponse({
@@ -51,11 +61,10 @@ export class TeamsController {
   })
   async findAll() {
     const teams = await this.teamsService.findAll();
-    return {
-      statusCode: HttpStatus.OK,
-      data: teams,
-    };
+    return { statusCode: HttpStatus.OK, data: teams };
   }
+
+  // ─── GET BY ID (todos logados) ─────────────────────────────────────────────
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar equipe por ID' })
@@ -64,17 +73,18 @@ export class TeamsController {
   @ApiResponse({ status: 404, description: 'Equipe não encontrada' })
   async findOne(@Param('id') id: string) {
     const team = await this.teamsService.findOne(id);
-    return {
-      statusCode: HttpStatus.OK,
-      data: team,
-    };
+    return { statusCode: HttpStatus.OK, data: team };
   }
 
+  // ─── UPDATE (ADMIN only) ───────────────────────────────────────────────────
+
   @Patch(':id')
-  @ApiOperation({ summary: 'Atualizar equipe' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Atualizar equipe (Admin only)' })
   @ApiParam({ name: 'id', description: 'UUID da equipe', type: String })
   @ApiBody({ type: UpdateTeamDto })
   @ApiResponse({ status: 200, description: 'Equipe atualizada com sucesso' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 404, description: 'Equipe não encontrada' })
   async update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto) {
     const team = await this.teamsService.update(id, updateTeamDto);
@@ -85,10 +95,14 @@ export class TeamsController {
     };
   }
 
+  // ─── DELETE (ADMIN only) ───────────────────────────────────────────────────
+
   @Delete(':id')
-  @ApiOperation({ summary: 'Remover equipe' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Remover equipe (Admin only)' })
   @ApiParam({ name: 'id', description: 'UUID da equipe', type: String })
   @ApiResponse({ status: 200, description: 'Equipe removida com sucesso' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 404, description: 'Equipe não encontrada' })
   async remove(@Param('id') id: string) {
     const team = await this.teamsService.remove(id);
@@ -99,12 +113,16 @@ export class TeamsController {
     };
   }
 
+  // ─── ADD MEMBER (ADMIN only) ───────────────────────────────────────────────
+
   @Post(':id/members')
+  @Roles(Role.ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Adicionar membro à equipe' })
+  @ApiOperation({ summary: 'Adicionar membro à equipe (Admin only)' })
   @ApiParam({ name: 'id', description: 'UUID da equipe', type: String })
   @ApiBody({ type: AddTeamMemberDto })
   @ApiResponse({ status: 201, description: 'Membro adicionado com sucesso' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({ status: 404, description: 'Equipe ou usuário não encontrado' })
   @ApiResponse({ status: 409, description: 'Usuário já é membro da equipe' })
   async addMember(
@@ -119,8 +137,11 @@ export class TeamsController {
     };
   }
 
+  // ─── REMOVE MEMBER (ADMIN only) ────────────────────────────────────────────
+
   @Delete(':id/members/:userId')
-  @ApiOperation({ summary: 'Remover membro da equipe' })
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Remover membro da equipe (Admin only)' })
   @ApiParam({ name: 'id', description: 'UUID da equipe', type: String })
   @ApiParam({
     name: 'userId',
@@ -128,6 +149,7 @@ export class TeamsController {
     type: Number,
   })
   @ApiResponse({ status: 200, description: 'Membro removido com sucesso' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({
     status: 404,
     description: 'Equipe não encontrada ou usuário não é membro',

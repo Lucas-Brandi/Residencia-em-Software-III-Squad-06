@@ -1,4 +1,4 @@
-import { Controller, Get, Query, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query, HttpStatus, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { FilterDashboardDto } from './dto/filter-dashboard.dto';
 import {
@@ -8,9 +8,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/enums/role.enum';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth('access-token')
+@UseGuards(RolesGuard)
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
@@ -46,12 +50,14 @@ export class DashboardController {
   // ─── MÉTRICAS DO ADMIN ──────────────────────────────────────────────────────
 
   @Get('metrics')
+  @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Buscar métricas do admin (cards de estatísticas)',
     description:
       'Retorna totais, economia de tempo, health score médio e breakdown de status. ' +
       'Usado pelos 4 cards de estatísticas da tela de administração.',
   })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
   @ApiResponse({
     status: 200,
     description: 'Métricas retornadas com sucesso',
