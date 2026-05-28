@@ -1,5 +1,12 @@
-import { IsString, IsNotEmpty, MinLength, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  MinLength,
+  Matches,
+  IsOptional,
+  IsEmail,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * DTO for user registration
@@ -31,4 +38,19 @@ export class RegisterDto {
     message: 'Password must contain at least one letter and one number',
   })
   password: string;
+
+  @ApiPropertyOptional({ example: 'arthur@email.com' })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional({ example: 'arthur-dev' })
+  @IsString()
+  @IsOptional()
+  githubUsername?: string;
+
+  @ApiPropertyOptional({ example: 'https://github.com/arthur-dev.png' })
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
 }

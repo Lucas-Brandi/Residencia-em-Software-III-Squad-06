@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from './enums/role.enum';
+import { UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -132,7 +133,11 @@ export class AuthService {
       data: {
         username: registerDto.username,
         password: hashedPassword,
+        email: registerDto.email,
+        githubUsername: registerDto.githubUsername,
+        avatarUrl: registerDto.avatarUrl,
         role: Role.USER,
+        status: UserStatus.ATIVO,
       },
     });
 
