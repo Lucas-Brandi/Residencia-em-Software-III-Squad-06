@@ -25,16 +25,16 @@ enum UserStatus {
 
 // --- SISTEMA DE ACESSO ---
 model User {
-  id             Int       @id @default(autoincrement())
-  username       String    @unique
-  githubUsername String?   @map("github_username") 
-  avatarUrl      String?   @map("avatar_url")      
+  id             Int        @id @default(autoincrement())
+  username       String     @unique
+  githubUsername String?    @map("github_username")
+  avatarUrl      String?    @map("avatar_url")
   password       String
-  role           Role      @default(USER)
-  resetToken     String?   @map("reset_token")
-  refreshToken   String?   @map("refresh_token")
-  email          String?   @unique   
-  status         UserStatus @default(ATIVO) 
+  role           Role       @default(USER)
+  resetToken     String?    @map("reset_token")
+  refreshToken   String?    @map("refresh_token")
+  email          String?    @unique
+  status         UserStatus @default(ATIVO)
 
   // Relacionamentos
   teams           TeamUser[]
@@ -47,27 +47,27 @@ model User {
 
 // --- TIMES (SQUADS) ---
 model Team {
-  id          String    @id @default(uuid())
-  name        String
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  members     TeamUser[]
+  members      TeamUser[]
   repositories Repository[]
 
   @@map("teams")
 }
 
 model TeamUser {
-  teamId    String   @map("team_id")
-  userId    Int      @map("user_id")
-  joinedAt  DateTime @default(now()) @map("joined_at")
+  teamId   String   @map("team_id")
+  userId   Int      @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
 
-  // Chaves Estrangeiras
-  team      Team @relation(fields: [teamId], references: [id])
-  user      User @relation(fields: [userId], references: [id])
+  
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([teamId, userId]) // Chave composta — evita duplicata no mesmo time
+  @@id([teamId, userId])
   @@map("team_users")
 }
 
@@ -76,46 +76,47 @@ model Repository {
   id        String   @id @default(uuid())
   name      String
   githubId  Int      @unique @map("github_id")
-  githubUrl String?  @map("github_url") // URL do repositório no GitHub
+  githubUrl String?  @map("github_url")
   teamId    String   @map("team_id")
-  isActive  Boolean  @default(true) @map("is_active") // Soft delete
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  rules     RuleRepository[]
-  prs       PullRequest[]
+  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade) // já existia
+  rules RuleRepository[]
+  prs   PullRequest[]
 
   @@map("repositories")
 }
 
 model AnalysisRule {
-  id          String    @id @default(uuid())
-  ruleType    String    @map("rule_type") // Ex: "segurança", "clean_code"
-  content     String    // MD ou JSON para a IA
-  createdById Int       @map("created_by")
-  severity    Severity  @default(AVISO)  // Crítico, Aviso ou Info
-  isActive    Boolean   @default(true)   // Ativo ou Inativo
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  ruleType    String   @map("rule_type")
+  content     String
+  createdById Int      @map("created_by")
+  severity    Severity @default(AVISO)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relacionamentos
   repositories RuleRepository[]
-  createdBy    User             @relation(fields: [createdById], references: [id])
+  
+  createdBy    User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@map("analysis_rules")
 }
 
-// Tabela intermediária para relação Many-to-Many entre AnalysisRule e Repository
+// Tabela intermediária Many-to-Many entre AnalysisRule e Repository
 model RuleRepository {
-  id           String        @id @default(uuid())
-  ruleId       String        @map("rule_id")
-  repositoryId String        @map("repository_id")
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  ruleId       String   @map("rule_id")
+  repositoryId String   @map("repository_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  // Relacionamentos
-  rule         AnalysisRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  repository   Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  
+  rule       AnalysisRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  repository Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
   @@unique([ruleId, repositoryId])
   @@map("rule_repositories")
@@ -127,33 +128,35 @@ model PullRequest {
   repositoryId String    @map("repository_id")
   prNumber     Int       @map("pr_number")
   authorId     Int       @map("author_id")
-  title        String?   // Título do PR
-  githubUrl    String?   @map("github_url") // Link direto para o PR no GitHub
-  status       String    // "aberto" | "fechado" | "mergeado"
+  title        String?
+  githubUrl    String?   @map("github_url")
+  status       String
   openedAt     DateTime  @default(now()) @map("opened_at")
-  closedAt     DateTime? @map("closed_at") // Nullable — só preenchido ao fechar
+  closedAt     DateTime? @map("closed_at")
 
-  // Relacionamentos
-  repository   Repository       @relation(fields: [repositoryId], references: [id])
-  author       User             @relation(fields: [authorId], references: [id])
-  results      AnalysisResult[]
+  
+  repository Repository       @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  author     User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  results    AnalysisResult[]
 
+  
+  @@unique([repositoryId, prNumber])
   @@map("pull_requests")
 }
 
 model AnalysisResult {
-  id          String      @id @default(uuid())
-  prId        String      @map("pr_id")
-  healthScore Float       @map("health_score") // Nota de 0 a 100
-  iaFeedback  String      @map("ia_feedback")  // Comentário final postado pelo bot
-  status      String      @default("pendente") // "pendente" | "aprovado" | "rejeitado"
-  reviewedById Int?       @map("reviewed_by")  // Admin/Dev que revisou o feedback da IA
-  reviewedAt  DateTime?   @map("reviewed_at")
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  prId         String    @map("pr_id")
+  healthScore  Float     @map("health_score")
+  iaFeedback   String    @map("ia_feedback")
+  status       String    @default("pendente")
+  reviewedById Int?      @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  // Relacionamentos
-  pr          PullRequest @relation(fields: [prId], references: [id])
-  reviewedBy  User?       @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  
+  pr         PullRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
+  reviewedBy User?       @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@map("analysis_results")
 }
@@ -161,8 +164,8 @@ model AnalysisResult {
 // --- CONFIGURAÇÕES DO SISTEMA ---
 model Config {
   id        String   @id @default(uuid())
-  key       String   @unique // Ex: "Rigidez da Análise"
-  value     String   // Valor da configuração (pode ser JSON, número, texto)
+  key       String   @unique
+  value     String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
