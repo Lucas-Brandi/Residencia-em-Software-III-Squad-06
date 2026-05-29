@@ -12,6 +12,7 @@ import { AIModule } from './AI/ai.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AuthModule } from './auth/auth.module';
 import { GithubWebhookModule } from './webhook/github-webhook.module';
+import { RulesModule } from './rules/rules.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
@@ -28,6 +29,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     AnalysisResultsModule,
     DashboardModule,
     GithubWebhookModule,
+    RulesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
