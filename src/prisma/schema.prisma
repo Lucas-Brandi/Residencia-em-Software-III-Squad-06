@@ -82,27 +82,43 @@ model Repository {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  rules     AnalysisRule[]
+  team      Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  rules     RuleRepository[]
   prs       PullRequest[]
 
   @@map("repositories")
 }
 
 model AnalysisRule {
-  id           String     @id @default(uuid())
-  repositoryId String     @map("repository_id")
-  ruleType     String     @map("rule_type") // Ex: "segurança", "clean_code"
-  content      String     // MD ou JSON para a IA
-  createdById  Int        @map("created_by")
-  severity     Severity   @default(AVISO)         // Crítico, Aviso ou Info
-  isActive     Boolean    @default(true)          // Ativo ou Inativo
+  id          String    @id @default(uuid())
+  ruleType    String    @map("rule_type") // Ex: "segurança", "clean_code"
+  content     String    // MD ou JSON para a IA
+  createdById Int       @map("created_by")
+  severity    Severity  @default(AVISO)  // Crítico, Aviso ou Info
+  isActive    Boolean   @default(true)   // Ativo ou Inativo
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   // Relacionamentos
-  repository   Repository @relation(fields: [repositoryId], references: [id])
-  createdBy    User       @relation(fields: [createdById], references: [id])
+  repositories RuleRepository[]
+  createdBy    User             @relation(fields: [createdById], references: [id])
 
   @@map("analysis_rules")
+}
+
+// Tabela intermediária para relação Many-to-Many entre AnalysisRule e Repository
+model RuleRepository {
+  id           String        @id @default(uuid())
+  ruleId       String        @map("rule_id")
+  repositoryId String        @map("repository_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  // Relacionamentos
+  rule         AnalysisRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  repository   Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, repositoryId])
+  @@map("rule_repositories")
 }
 
 // --- FLUXO DE REVISÃO (CODE REVIEW) ---

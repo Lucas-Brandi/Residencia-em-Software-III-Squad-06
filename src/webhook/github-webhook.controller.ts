@@ -156,8 +156,14 @@ export class GithubWebhookController {
     }
 
     const rules = await this.prisma.analysisRule.findMany({
-      where: { repositoryId: repository.id },
-    });
+  where: {
+    repositories: {
+      some: {
+        repositoryId: repository.id,
+      },
+    },
+  },
+});
 
     if (!rules.length) {
       this.logger.log(
