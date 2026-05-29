@@ -9,6 +9,7 @@ import {
   HttpStatus,
   HttpCode,
   Query,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -33,14 +34,8 @@ export class AnalysisRulesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar regra de análise' })
   @ApiBody({ type: CreateAnalysisRuleDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Regra de análise criada com sucesso',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Dados inválidos ou referência inexistente',
-  })
+  @ApiResponse({ status: 201, description: 'Regra de análise criada com sucesso' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos ou referência inexistente' })
   async create(@Body() createAnalysisRuleDto: CreateAnalysisRuleDto) {
     const analysisRule = await this.analysisRulesService.create(
       createAnalysisRuleDto,
@@ -60,10 +55,7 @@ export class AnalysisRulesController {
     description: 'Filtrar regras por UUID do repositório',
     type: String,
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de regras retornada com sucesso',
-  })
+  @ApiResponse({ status: 200, description: 'Lista de regras retornada com sucesso' })
   async findAll(@Query('repositoryId') repositoryId?: string) {
     const analysisRules = await this.analysisRulesService.findAll(repositoryId);
     return {
@@ -74,11 +66,7 @@ export class AnalysisRulesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar regra de análise por ID' })
-  @ApiParam({
-    name: 'id',
-    description: 'UUID da regra de análise',
-    type: String,
-  })
+  @ApiParam({ name: 'id', description: 'UUID da regra de análise', type: String })
   @ApiResponse({ status: 200, description: 'Regra de análise encontrada' })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
   async findOne(@Param('id') id: string) {
@@ -91,28 +79,21 @@ export class AnalysisRulesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar regra de análise' })
-  @ApiParam({
-    name: 'id',
-    description: 'UUID da regra de análise',
-    type: String,
-  })
+  @ApiParam({ name: 'id', description: 'UUID da regra de análise', type: String })
   @ApiBody({ type: UpdateAnalysisRuleDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Regra de análise atualizada com sucesso',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Dados inválidos ou referência inexistente',
-  })
+  @ApiResponse({ status: 200, description: 'Regra de análise atualizada com sucesso' })
+  @ApiResponse({ status: 403, description: 'Sem permissão para editar esta regra' })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
   async update(
     @Param('id') id: string,
     @Body() updateAnalysisRuleDto: UpdateAnalysisRuleDto,
+    @Request() req,
   ) {
     const analysisRule = await this.analysisRulesService.update(
       id,
       updateAnalysisRuleDto,
+      req.user.id,
+      req.user.role,
     );
     return {
       statusCode: HttpStatus.OK,
@@ -123,18 +104,16 @@ export class AnalysisRulesController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover regra de análise' })
-  @ApiParam({
-    name: 'id',
-    description: 'UUID da regra de análise',
-    type: String,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Regra de análise removida com sucesso',
-  })
+  @ApiParam({ name: 'id', description: 'UUID da regra de análise', type: String })
+  @ApiResponse({ status: 200, description: 'Regra de análise removida com sucesso' })
+  @ApiResponse({ status: 403, description: 'Sem permissão para deletar esta regra' })
   @ApiResponse({ status: 404, description: 'Regra de análise não encontrada' })
-  async remove(@Param('id') id: string) {
-    const analysisRule = await this.analysisRulesService.remove(id);
+  async remove(@Param('id') id: string, @Request() req) {
+    const analysisRule = await this.analysisRulesService.remove(
+      id,
+      req.user.id,
+      req.user.role,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Analysis rule deleted successfully',

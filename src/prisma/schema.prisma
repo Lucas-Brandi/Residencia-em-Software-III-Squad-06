@@ -63,7 +63,6 @@ model TeamUser {
   userId   Int      @map("user_id")
   joinedAt DateTime @default(now()) @map("joined_at")
 
-  
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -82,7 +81,7 @@ model Repository {
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade) // já existia
+  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   rules RuleRepository[]
   prs   PullRequest[]
 
@@ -91,6 +90,8 @@ model Repository {
 
 model AnalysisRule {
   id          String   @id @default(uuid())
+  title       String
+  description String?
   ruleType    String   @map("rule_type")
   content     String
   createdById Int      @map("created_by")
@@ -101,7 +102,7 @@ model AnalysisRule {
 
   // Relacionamentos
   repositories RuleRepository[]
-  
+  findings     Finding[]
   createdBy    User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@map("analysis_rules")
@@ -114,7 +115,6 @@ model RuleRepository {
   repositoryId String   @map("repository_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  
   rule       AnalysisRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   repository Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
@@ -127,19 +127,17 @@ model PullRequest {
   id           String    @id @default(uuid())
   repositoryId String    @map("repository_id")
   prNumber     Int       @map("pr_number")
-  authorId     Int       @map("author_id")
+  authorId     Int?      @map("author_id") // nullable: autor pode não ter conta no sistema
   title        String?
   githubUrl    String?   @map("github_url")
   status       String
   openedAt     DateTime  @default(now()) @map("opened_at")
   closedAt     DateTime? @map("closed_at")
 
-  
   repository Repository       @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  author     User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  author     User?            @relation(fields: [authorId], references: [id], onDelete: Restrict)
   results    AnalysisResult[]
 
-  
   @@unique([repositoryId, prNumber])
   @@map("pull_requests")
 }
@@ -154,11 +152,28 @@ model AnalysisResult {
   reviewedAt   DateTime? @map("reviewed_at")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  
   pr         PullRequest @relation(fields: [prId], references: [id], onDelete: Cascade)
   reviewedBy User?       @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  findings   Finding[]
 
   @@map("analysis_results")
+}
+
+// --- FINDINGS DA IA ---
+model Finding {
+  id               String   @id @default(uuid())
+  analysisResultId String   @map("analysis_result_id")
+  ruleId           String?  @map("rule_id")
+  severity         Severity
+  description      String
+  filePath         String?  @map("file_path")
+  lineNumber       Int?     @map("line_number")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  analysisResult AnalysisResult @relation(fields: [analysisResultId], references: [id], onDelete: Cascade)
+  rule           AnalysisRule?  @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@map("findings")
 }
 
 // --- CONFIGURAÇÕES DO SISTEMA ---
