@@ -16,12 +16,16 @@ export class AnalysisRulesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAnalysisRuleDto: CreateAnalysisRuleDto) {
-    const repository = await this.prisma.repository.findUnique({
-      where: { id: createAnalysisRuleDto.repositoryId },
-    });
+    // Se ainda passarem um repositoryId no DTO por compatibilidade, podemos vincular na tabela pivô depois,
+    // mas na tabela analysisRule não salvamos mais o ID direto.
+    if (createAnalysisRuleDto.repositoryId) {
+      const repository = await this.prisma.repository.findUnique({
+        where: { id: createAnalysisRuleDto.repositoryId },
+      });
 
-    if (!repository) {
-      throw new BadRequestException('Repository not found');
+      if (!repository) {
+        throw new BadRequestException('Repository not found');
+      }
     }
 
     const user = await this.prisma.user.findUnique({
@@ -33,9 +37,8 @@ export class AnalysisRulesService {
     }
 
     try {
-      return await this.prisma.analysisRule.create({
+      const rule = await this.prisma.analysisRule.create({
         data: {
-          repositoryId: createAnalysisRuleDto.repositoryId,
           ruleType: createAnalysisRuleDto.ruleType,
           content: createAnalysisRuleDto.content,
           createdById: createAnalysisRuleDto.createdById,
@@ -44,6 +47,18 @@ export class AnalysisRulesService {
         },
         include: this.defaultInclude(),
       });
+
+      // Se foi passado um repositoryId na criação antiga, fazemos o vínculo na tabela pivô Many-to-Many automaticamente
+      if (createAnalysisRuleDto.repositoryId) {
+        await this.prisma.ruleRepository.create({
+          data: {
+            ruleId: rule.id,
+            repositoryId: createAnalysisRuleDto.repositoryId,
+          },
+        });
+      }
+
+      return rule;
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -51,7 +66,15 @@ export class AnalysisRulesService {
 
   async findAll(repositoryId?: string) {
     const where: Prisma.AnalysisRuleWhereInput = {};
-    if (repositoryId) where.repositoryId = repositoryId;
+    
+    // Ajuste cirúrgico: Filtrando através da tabela pivô usando o operador 'some'
+    if (repositoryId) {
+      where.repositories = {
+        some: {
+          repositoryId: repositoryId,
+        },
+      };
+    }
 
     return this.prisma.analysisRule.findMany({
       where,
@@ -100,10 +123,9 @@ export class AnalysisRulesService {
     }
 
     try {
-      return await this.prisma.analysisRule.update({
+      const updatedRule = await this.prisma.analysisRule.update({
         where: { id },
         data: {
-          repositoryId: updateAnalysisRuleDto.repositoryId,
           ruleType: updateAnalysisRuleDto.ruleType,
           content: updateAnalysisRuleDto.content,
           createdById: updateAnalysisRuleDto.createdById,
@@ -112,6 +134,30 @@ export class AnalysisRulesService {
         },
         include: this.defaultInclude(),
       });
+
+      // Se atualizou o repositório pelo método antigo, garante o vínculo na tabela pivô
+      if (updateAnalysisRuleDto.repositoryId) {
+        // Verifica se o vínculo já existe para não duplicar
+        const existingRelation = await this.prisma.ruleRepository.findUnique({
+          where: {
+            ruleId_repositoryId: {
+              ruleId: id,
+              repositoryId: updateAnalysisRuleDto.repositoryId,
+            },
+          },
+        });
+
+        if (!existingRelation) {
+          await this.prisma.ruleRepository.create({
+            data: {
+              ruleId: id,
+              repositoryId: updateAnalysisRuleDto.repositoryId,
+            },
+          });
+        }
+      }
+
+      return updatedRule;
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -126,6 +172,11 @@ export class AnalysisRulesService {
       throw new NotFoundException(`Analysis rule with ID ${id} not found`);
     }
 
+    // Deleta os vínculos na tabela pivô primeiro devido à restrição de chave estrangeira
+    await this.prisma.ruleRepository.deleteMany({
+      where: { ruleId: id },
+    });
+
     await this.prisma.analysisRule.delete({ where: { id } });
 
     return existingRule;
@@ -135,7 +186,12 @@ export class AnalysisRulesService {
 
   private defaultInclude() {
     return {
-      repository: true,
+      // Ajuste cirúrgico: O campo 'repository' virou 'repositories' (relação Many-to-Many)
+      repositories: {
+        include: {
+          repository: true,
+        },
+      },
       createdBy: {
         select: {
           id: true,
