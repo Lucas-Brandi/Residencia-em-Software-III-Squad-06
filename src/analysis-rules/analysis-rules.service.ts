@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -16,8 +17,6 @@ export class AnalysisRulesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAnalysisRuleDto: CreateAnalysisRuleDto) {
-    // Se ainda passarem um repositoryId no DTO por compatibilidade, podemos vincular na tabela pivô depois,
-    // mas na tabela analysisRule não salvamos mais o ID direto.
     if (createAnalysisRuleDto.repositoryId) {
       const repository = await this.prisma.repository.findUnique({
         where: { id: createAnalysisRuleDto.repositoryId },
@@ -39,6 +38,8 @@ export class AnalysisRulesService {
     try {
       const rule = await this.prisma.analysisRule.create({
         data: {
+          title: createAnalysisRuleDto.title,
+          description: createAnalysisRuleDto.description,
           ruleType: createAnalysisRuleDto.ruleType,
           content: createAnalysisRuleDto.content,
           createdById: createAnalysisRuleDto.createdById,
@@ -48,7 +49,6 @@ export class AnalysisRulesService {
         include: this.defaultInclude(),
       });
 
-      // Se foi passado um repositoryId na criação antiga, fazemos o vínculo na tabela pivô Many-to-Many automaticamente
       if (createAnalysisRuleDto.repositoryId) {
         await this.prisma.ruleRepository.create({
           data: {
@@ -66,8 +66,7 @@ export class AnalysisRulesService {
 
   async findAll(repositoryId?: string) {
     const where: Prisma.AnalysisRuleWhereInput = {};
-    
-    // Ajuste cirúrgico: Filtrando através da tabela pivô usando o operador 'some'
+
     if (repositoryId) {
       where.repositories = {
         some: {
@@ -95,13 +94,44 @@ export class AnalysisRulesService {
     return rule;
   }
 
-  async update(id: string, updateAnalysisRuleDto: UpdateAnalysisRuleDto) {
+  async update(
+    id: string,
+    updateAnalysisRuleDto: UpdateAnalysisRuleDto,
+    userId: number,
+    userRole: string,
+  ) {
     const existingRule = await this.prisma.analysisRule.findUnique({
       where: { id },
+      include: {
+        repositories: {
+          include: {
+            repository: {
+              include: {
+                team: {
+                  include: { members: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingRule) {
       throw new NotFoundException(`Analysis rule with ID ${id} not found`);
+    }
+
+    // Verificação de ownership: criador, membro do time ou ADMIN
+    const isCreator = existingRule.createdById === userId;
+    const isAdmin = userRole === 'ADMIN';
+    const isTeamMember = existingRule.repositories.some((ruleRepo) =>
+      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+    );
+
+    if (!isCreator && !isAdmin && !isTeamMember) {
+      throw new ForbiddenException(
+        'Você não tem permissão para editar esta regra',
+      );
     }
 
     if (updateAnalysisRuleDto.repositoryId) {
@@ -113,31 +143,34 @@ export class AnalysisRulesService {
       }
     }
 
-    if (updateAnalysisRuleDto.createdById) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: updateAnalysisRuleDto.createdById },
-      });
-      if (!user) {
-        throw new BadRequestException('User not found');
-      }
-    }
-
     try {
       const updatedRule = await this.prisma.analysisRule.update({
         where: { id },
         data: {
-          ruleType: updateAnalysisRuleDto.ruleType,
-          content: updateAnalysisRuleDto.content,
-          createdById: updateAnalysisRuleDto.createdById,
-          severity: updateAnalysisRuleDto.severity,
-          isActive: updateAnalysisRuleDto.isActive,
+          ...(updateAnalysisRuleDto.title !== undefined && {
+            title: updateAnalysisRuleDto.title,
+          }),
+          ...(updateAnalysisRuleDto.description !== undefined && {
+            description: updateAnalysisRuleDto.description,
+          }),
+          ...(updateAnalysisRuleDto.ruleType !== undefined && {
+            ruleType: updateAnalysisRuleDto.ruleType,
+          }),
+          ...(updateAnalysisRuleDto.content !== undefined && {
+            content: updateAnalysisRuleDto.content,
+          }),
+          ...(updateAnalysisRuleDto.severity !== undefined && {
+            severity: updateAnalysisRuleDto.severity,
+          }),
+          ...(updateAnalysisRuleDto.isActive !== undefined && {
+            isActive: updateAnalysisRuleDto.isActive,
+          }),
+          // Nunca permite alterar o criador via update
         },
         include: this.defaultInclude(),
       });
 
-      // Se atualizou o repositório pelo método antigo, garante o vínculo na tabela pivô
       if (updateAnalysisRuleDto.repositoryId) {
-        // Verifica se o vínculo já existe para não duplicar
         const existingRelation = await this.prisma.ruleRepository.findUnique({
           where: {
             ruleId_repositoryId: {
@@ -163,16 +196,41 @@ export class AnalysisRulesService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, userId: number, userRole: string) {
     const existingRule = await this.prisma.analysisRule.findUnique({
       where: { id },
+      include: {
+        repositories: {
+          include: {
+            repository: {
+              include: {
+                team: {
+                  include: { members: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingRule) {
       throw new NotFoundException(`Analysis rule with ID ${id} not found`);
     }
 
-    // Deleta os vínculos na tabela pivô primeiro devido à restrição de chave estrangeira
+    // Verificação de ownership: criador, membro do time ou ADMIN
+    const isCreator = existingRule.createdById === userId;
+    const isAdmin = userRole === 'ADMIN';
+    const isTeamMember = existingRule.repositories.some((ruleRepo) =>
+      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+    );
+
+    if (!isCreator && !isAdmin && !isTeamMember) {
+      throw new ForbiddenException(
+        'Você não tem permissão para deletar esta regra',
+      );
+    }
+
     await this.prisma.ruleRepository.deleteMany({
       where: { ruleId: id },
     });
@@ -186,7 +244,6 @@ export class AnalysisRulesService {
 
   private defaultInclude() {
     return {
-      // Ajuste cirúrgico: O campo 'repository' virou 'repositories' (relação Many-to-Many)
       repositories: {
         include: {
           repository: true,

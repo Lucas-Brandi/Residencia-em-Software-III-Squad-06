@@ -17,12 +17,28 @@ export enum Severity {
 
 export class CreateAnalysisRuleDto {
   @ApiProperty({
-    description: 'UUID do repositório',
+    description: 'Título da regra',
+    example: 'Proibir variáveis snake_case',
+  })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiPropertyOptional({
+    description: 'Descrição detalhada do objetivo da regra',
+    example: 'Esta regra garante que o código siga o padrão camelCase do projeto.',
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({
+    description: 'UUID do repositório para vincular na criação (opcional)',
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   })
   @IsUUID()
-  @IsNotEmpty()
-  repositoryId: string;
+  @IsOptional()
+  repositoryId?: string;
 
   @ApiProperty({ description: 'Tipo/categoria da regra', example: 'Qualidade' })
   @IsString()
@@ -30,7 +46,7 @@ export class CreateAnalysisRuleDto {
   ruleType: string;
 
   @ApiProperty({
-    description: 'Conteúdo/descrição da regra',
+    description: 'Conteúdo/instrução da regra em formato texto para a IA',
     example: 'Variáveis devem usar camelCase',
   })
   @IsString()

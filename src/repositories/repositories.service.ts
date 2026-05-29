@@ -61,6 +61,23 @@ export class RepositoriesService {
       where: { id },
       include: {
         team: true,
+        rules: {
+          include: {
+            rule: {
+              include: {
+                createdBy: {
+                  select: {
+                    id: true,
+                    username: true,
+                    githubUsername: true,
+                    avatarUrl: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 

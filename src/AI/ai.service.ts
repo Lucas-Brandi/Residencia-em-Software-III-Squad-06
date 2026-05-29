@@ -71,6 +71,12 @@ export class AIService {
       }
 
       const parsedResponse: AIResponse = JSON.parse(responseText);
+
+      // Garante que findings sempre existe como array (compatibilidade defensiva)
+      if (!Array.isArray(parsedResponse.findings)) {
+        parsedResponse.findings = [];
+      }
+
       return parsedResponse;
     } catch (error) {
       console.error('Erro ao chamar a API da OpenAI:', error);
@@ -93,9 +99,33 @@ export class AIService {
     return `You are a strict code review assistant. ${focus}
 ${allRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
 
-You MUST respond with a valid JSON object containing exactly these two keys:
+You MUST respond with a valid JSON object containing exactly these three keys:
 - "healthScore": A number between 0 and 100 representing the overall code quality.
-- "feedback": A string with detailed feedback about the code.`;
+- "feedback": A string with a general summary of the code analysis.
+- "findings": An array of specific issues found. Each finding must be an object with:
+  - "severity": One of "CRITICO", "AVISO", or "INFO".
+  - "description": A clear description of the issue found.
+  - "filePath": (optional) The file path where the issue was found, if identifiable from the diff.
+  - "lineNumber": (optional) The line number of the issue, if identifiable.
+
+Example response:
+{
+  "healthScore": 72,
+  "feedback": "The code has some security vulnerabilities and style issues that should be addressed.",
+  "findings": [
+    {
+      "severity": "CRITICO",
+      "description": "Potential SQL injection vulnerability: user input is concatenated directly into a query string.",
+      "filePath": "src/controllers/users.ts",
+      "lineNumber": 42
+    },
+    {
+      "severity": "AVISO",
+      "description": "Variable 'data' uses snake_case instead of camelCase.",
+      "filePath": "src/utils/helpers.ts"
+    }
+  ]
+}`;
   }
 
   private buildUserPrompt(codeSnippet: string): string {

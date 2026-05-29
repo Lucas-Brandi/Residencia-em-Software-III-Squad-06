@@ -1,4 +1,10 @@
-import { IsString, IsEnum, IsOptional, IsNotEmpty, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNotEmpty,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 enum Severity {
@@ -9,16 +15,32 @@ enum Severity {
 
 export class CreateRuleDto {
   @ApiProperty({
+    description: 'Título da regra',
+    example: 'Proibir variáveis snake_case',
+  })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiPropertyOptional({
+    description: 'Descrição detalhada do objetivo da regra',
+    example: 'Esta regra garante que o código siga o padrão camelCase do projeto.',
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiProperty({
     description: 'Tipo da regra (ex: segurança, clean_code, performance)',
-    example: 'segurança',
+    example: 'clean_code',
   })
   @IsString()
   @IsNotEmpty()
   ruleType: string;
 
   @ApiProperty({
-    description: 'Conteúdo da regra em formato Markdown ou JSON para a IA',
-    example: 'Verifique se há vulnerabilidades de segurança no código',
+    description: 'Conteúdo/instrução da regra em formato texto para a IA',
+    example: 'Variáveis e funções devem usar camelCase. Proibido usar snake_case.',
   })
   @IsString()
   @IsNotEmpty()

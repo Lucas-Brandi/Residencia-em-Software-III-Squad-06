@@ -69,6 +69,7 @@ export class GithubWebhookController {
     @Body() payload: Record<string, any>,
     @Req() req: RawBodyRequest,
   ) {
+    // ─── Validação de assinatura ──────────────────────────────────────────────
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
     if (webhookSecret) {
       const rawBody: Buffer = req.rawBody ?? Buffer.alloc(0);
@@ -111,6 +112,7 @@ export class GithubWebhookController {
       return { received: true };
     }
 
+    // ─── Busca diff do PR ─────────────────────────────────────────────────────
     let diff = '';
     try {
       const installationToken =
@@ -129,9 +131,7 @@ export class GithubWebhookController {
       if (diffResponse.ok) {
         diff = await diffResponse.text();
       } else {
-        this.logger.warn(
-          `Falha ao buscar diff: ${diffResponse.status}`,
-        );
+        this.logger.warn(`Falha ao buscar diff: ${diffResponse.status}`);
       }
     } catch (err) {
       this.logger.error('Erro ao buscar diff do PR', err);
@@ -144,6 +144,7 @@ export class GithubWebhookController {
       return { received: true };
     }
 
+    // ─── Busca o repositório no banco ─────────────────────────────────────────
     const repository = await this.prisma.repository.findUnique({
       where: { githubId: repositoryGithubId },
     });
@@ -155,15 +156,17 @@ export class GithubWebhookController {
       return { received: true };
     }
 
+    // ─── Busca regras vinculadas ──────────────────────────────────────────────
     const rules = await this.prisma.analysisRule.findMany({
-  where: {
-    repositories: {
-      some: {
-        repositoryId: repository.id,
+      where: {
+        isActive: true,
+        repositories: {
+          some: {
+            repositoryId: repository.id,
+          },
+        },
       },
-    },
-  },
-});
+    });
 
     if (!rules.length) {
       this.logger.log(
@@ -172,16 +175,32 @@ export class GithubWebhookController {
     }
 
     const ruleContents = rules.map((r) => r.content);
-    const aiResult = await this.aiService.analyzeCode(diff, ruleContents);
 
+    // ─── Análise da IA ────────────────────────────────────────────────────────
+    const aiResult = await this.aiService.analyzeCode(diff, ruleContents);
     const score = aiResult.healthScore;
+
+    // ─── Posta comentário no PR ───────────────────────────────────────────────
     const scoreEmoji = score >= 80 ? '✅' : score >= 50 ? '⚠️' : '❌';
+    const findingsSummary =
+      aiResult.findings.length > 0
+        ? [
+            '',
+            '### Findings',
+            ...aiResult.findings.map(
+              (f) =>
+                `- **[${f.severity}]** ${f.description}${f.filePath ? ` \`${f.filePath}${f.lineNumber ? `:${f.lineNumber}` : ''}\`` : ''}`,
+            ),
+          ].join('\n')
+        : '';
+
     const commentBody = [
       '## DiffyAI - Analysis Result',
       '',
       `${scoreEmoji} **Health Score: ${score}/100**`,
       '',
       aiResult.feedback,
+      findingsSummary,
       '',
       '---',
       '*Analysis generated automatically by the DiffyAI Bot*',
@@ -201,6 +220,83 @@ export class GithubWebhookController {
       this.logger.error('Erro ao postar comentário no PR', err);
     }
 
-    return { received: true, analysed: true, healthScore: score };
+    // ─── Persiste o resultado no banco ────────────────────────────────────────
+    try {
+      // Tenta encontrar o autor do PR por GitHub username
+      const prAuthorLogin = payload?.pull_request?.user?.login as
+        | string
+        | undefined;
+      let authorId: number | null = null;
+
+      if (prAuthorLogin) {
+        const author = await this.prisma.user.findFirst({
+          where: { githubUsername: prAuthorLogin },
+        });
+        if (author) {
+          authorId = author.id;
+        }
+      }
+
+      // Upsert do PullRequest (em caso de synchronize, atualiza)
+      const pullRequest = await this.prisma.pullRequest.upsert({
+        where: {
+          repositoryId_prNumber: {
+            repositoryId: repository.id,
+            prNumber,
+          },
+        },
+        create: {
+          repositoryId: repository.id,
+          prNumber,
+          authorId,
+          title: (payload?.pull_request?.title as string) || null,
+          githubUrl: (payload?.pull_request?.html_url as string) || null,
+          status: 'aberto',
+        },
+        update: {
+          title: (payload?.pull_request?.title as string) || undefined,
+          status: 'aberto',
+        },
+      });
+
+      // Cria o AnalysisResult
+      const analysisResult = await this.prisma.analysisResult.create({
+        data: {
+          prId: pullRequest.id,
+          healthScore: score,
+          iaFeedback: aiResult.feedback,
+          status: 'pendente',
+        },
+      });
+
+      // Persiste os findings individuais da IA
+      if (aiResult.findings.length > 0) {
+        await this.prisma.finding.createMany({
+          data: aiResult.findings.map((finding) => ({
+            analysisResultId: analysisResult.id,
+            severity: finding.severity,
+            description: finding.description,
+            filePath: finding.filePath ?? null,
+            lineNumber: finding.lineNumber ?? null,
+          })),
+        });
+
+        this.logger.log(
+          `${aiResult.findings.length} finding(s) salvos para PR #${prNumber}`,
+        );
+      }
+
+      return {
+        received: true,
+        analysed: true,
+        healthScore: score,
+        findingsCount: aiResult.findings.length,
+        analysisResultId: analysisResult.id,
+      };
+    } catch (err) {
+      // Loga o erro mas não falha o webhook — o comentário já foi postado
+      this.logger.error('Erro ao persistir resultado da análise no banco', err);
+      return { received: true, analysed: true, healthScore: score };
+    }
   }
 }
