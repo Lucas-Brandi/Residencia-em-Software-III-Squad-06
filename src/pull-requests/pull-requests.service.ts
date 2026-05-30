@@ -43,6 +43,19 @@ export class PullRequestsService {
               role: true,
             },
           },
+          // FIX: findings agora incluídos em cada result
+          findings: {
+            orderBy: { createdAt: 'asc' as const },
+            include: {
+              rule: {
+                select: {
+                  id: true,
+                  title: true,
+                  severity: true,
+                },
+              },
+            },
+          },
         },
       },
     };
@@ -105,6 +118,8 @@ export class PullRequestsService {
   }
 
   // ─── FIND ONE WITH ANALYSIS (tela de pr-analysis) ─────────────────────────
+  // FIX: agora retorna findings dentro de analysis (resultado mais recente)
+  // e também no analysisHistory completo
 
   async findOneWithAnalysis(id: string) {
     const pr = await this.prisma.pullRequest.findUnique({
@@ -128,7 +143,7 @@ export class PullRequestsService {
       closedAt: pr.closedAt,
       repository: pr.repository,
       author: pr.author,
-      // Dados da análise da IA
+      // Dados da análise da IA (resultado mais recente)
       analysis: latestResult
         ? {
             id: latestResult.id,
@@ -138,9 +153,11 @@ export class PullRequestsService {
             reviewedBy: latestResult.reviewedBy,
             reviewedAt: latestResult.reviewedAt,
             createdAt: latestResult.createdAt,
+            // FIX: findings do resultado mais recente expostos diretamente
+            findings: latestResult.findings,
           }
         : null,
-      // Histórico completo de análises
+      // Histórico completo de análises (cada uma com seus findings)
       analysisHistory: pr.results,
     };
   }

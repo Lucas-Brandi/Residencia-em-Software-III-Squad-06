@@ -36,6 +36,7 @@ export class PullRequestsController {
     status: 400,
     description: 'Dados inválidos ou referência inexistente',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(@Body() createPullRequestDto: CreatePullRequestDto) {
     const pullRequest =
       await this.pullRequestsService.create(createPullRequestDto);
@@ -52,6 +53,7 @@ export class PullRequestsController {
     status: 200,
     description: 'Lista de pull requests retornada com sucesso',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll() {
     const pullRequests = await this.pullRequestsService.findAll();
     return { statusCode: HttpStatus.OK, data: pullRequests };
@@ -61,6 +63,7 @@ export class PullRequestsController {
   @ApiOperation({ summary: 'Buscar pull request por ID' })
   @ApiParam({ name: 'id', description: 'UUID do pull request', type: String })
   @ApiResponse({ status: 200, description: 'Pull request encontrado' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async findOne(@Param('id') id: string) {
     const pullRequest = await this.pullRequestsService.findOne(id);
@@ -74,12 +77,13 @@ export class PullRequestsController {
     summary: 'Buscar PR com resultado completo da análise da IA',
     description:
       'Retorna o PR junto com o feedback mais recente da IA (healthScore, iaFeedback, status) ' +
-      'e o histórico completo de análises. Usado pela tela de pr-analysis.',
+      'incluindo os findings (descobertas) gerados pela IA, e o histórico completo de análises. ' +
+      'Usado pela tela de pr-analysis — elimina a necessidade de dados mockados no front.',
   })
   @ApiParam({ name: 'id', description: 'UUID do pull request', type: String })
   @ApiResponse({
     status: 200,
-    description: 'PR com análise retornado com sucesso',
+    description: 'PR com análise e findings retornados com sucesso',
     schema: {
       properties: {
         id: { type: 'string' },
@@ -100,12 +104,56 @@ export class PullRequestsController {
             reviewedBy: { type: 'object', nullable: true },
             reviewedAt: { type: 'string', format: 'date-time', nullable: true },
             createdAt: { type: 'string', format: 'date-time' },
+            // FIX: findings agora documentados na resposta
+            findings: {
+              type: 'array',
+              description: 'Descobertas geradas pela IA para este PR',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  severity: {
+                    type: 'string',
+                    enum: ['CRITICO', 'AVISO', 'INFO'],
+                    example: 'CRITICO',
+                  },
+                  description: {
+                    type: 'string',
+                    example:
+                      'SQL injection via concatenação de string em /api/users.ts',
+                  },
+                  filePath: {
+                    type: 'string',
+                    nullable: true,
+                    example: 'src/api/users.ts',
+                  },
+                  lineNumber: {
+                    type: 'number',
+                    nullable: true,
+                    example: 87,
+                  },
+                  rule: {
+                    type: 'object',
+                    nullable: true,
+                    properties: {
+                      id: { type: 'string' },
+                      title: { type: 'string' },
+                      severity: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
-        analysisHistory: { type: 'array' },
+        analysisHistory: {
+          type: 'array',
+          description: 'Histórico completo de análises (cada uma com findings)',
+        },
       },
     },
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async findOneWithAnalysis(@Param('id') id: string) {
     const data = await this.pullRequestsService.findOneWithAnalysis(id);
@@ -120,6 +168,7 @@ export class PullRequestsController {
     status: 200,
     description: 'Pull request atualizado com sucesso',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async update(
     @Param('id') id: string,
@@ -143,6 +192,7 @@ export class PullRequestsController {
     status: 200,
     description: 'Pull request removido com sucesso',
   })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Pull request não encontrado' })
   async remove(@Param('id') id: string) {
     const pullRequest = await this.pullRequestsService.remove(id);
