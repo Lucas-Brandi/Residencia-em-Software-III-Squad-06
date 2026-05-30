@@ -12,6 +12,35 @@ import { Prisma } from '@prisma/client';
 export class AnalysisResultsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // ─── Include reutilizável com findings ────────────────────────────────────
+  private baseInclude() {
+    return {
+      pr: true,
+      reviewedBy: {
+        select: {
+          id: true,
+          username: true,
+          githubUsername: true,
+          avatarUrl: true,
+          role: true,
+        },
+      },
+      // FIX: findings da IA agora sempre incluídos
+      findings: {
+        orderBy: { createdAt: 'asc' as const },
+        include: {
+          rule: {
+            select: {
+              id: true,
+              title: true,
+              severity: true,
+            },
+          },
+        },
+      },
+    };
+  }
+
   async create(createAnalysisResultDto: CreateAnalysisResultDto) {
     const pullRequest = await this.prisma.pullRequest.findUnique({
       where: { id: createAnalysisResultDto.prId },
@@ -30,18 +59,7 @@ export class AnalysisResultsService {
         iaFeedback: createAnalysisResultDto.iaFeedback,
         status: createAnalysisResultDto.status,
       },
-      include: {
-        pr: true,
-        reviewedBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
     });
 
     return analysisResult;
@@ -49,18 +67,8 @@ export class AnalysisResultsService {
 
   async findAll() {
     const analysisResults = await this.prisma.analysisResult.findMany({
-      include: {
-        pr: true,
-        reviewedBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
+      orderBy: { createdAt: 'desc' },
     });
 
     return analysisResults;
@@ -69,15 +77,32 @@ export class AnalysisResultsService {
   async findOne(id: string) {
     const analysisResult = await this.prisma.analysisResult.findUnique({
       where: { id },
-      include: {
-        pr: true,
-        reviewedBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
+      include: this.baseInclude(),
+    });
+
+    if (!analysisResult) {
+      throw new NotFoundException(`Analysis result with ID ${id} not found`);
+    }
+
+    return analysisResult;
+  }
+
+  // ─── Busca somente os findings de um resultado (usado pelo controller) ────
+  async findFindings(id: string) {
+    const analysisResult = await this.prisma.analysisResult.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        findings: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            rule: {
+              select: {
+                id: true,
+                title: true,
+                severity: true,
+              },
+            },
           },
         },
       },
@@ -87,7 +112,7 @@ export class AnalysisResultsService {
       throw new NotFoundException(`Analysis result with ID ${id} not found`);
     }
 
-    return analysisResult;
+    return analysisResult.findings;
   }
 
   async update(id: string, updateAnalysisResultDto: UpdateAnalysisResultDto) {
@@ -164,18 +189,7 @@ export class AnalysisResultsService {
     const analysisResult = await this.prisma.analysisResult.update({
       where: { id },
       data,
-      include: {
-        pr: true,
-        reviewedBy: {
-          select: {
-            id: true,
-            username: true,
-            githubUsername: true,
-            avatarUrl: true,
-            role: true,
-          },
-        },
-      },
+      include: this.baseInclude(),
     });
 
     return analysisResult;
