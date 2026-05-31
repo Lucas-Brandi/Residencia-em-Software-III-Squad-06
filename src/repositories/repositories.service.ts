@@ -127,6 +127,40 @@ export class RepositoriesService {
     }
   }
 
+  async findRules(repositoryId: string) {
+    const repository = await this.prisma.repository.findUnique({
+      where: { id: repositoryId },
+    });
+
+    if (!repository) {
+      throw new NotFoundException(
+        `Repository with ID ${repositoryId} not found`,
+      );
+    }
+
+    const ruleRepositories = await this.prisma.ruleRepository.findMany({
+      where: { repositoryId },
+      include: {
+        rule: {
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                username: true,
+                githubUsername: true,
+                avatarUrl: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return ruleRepositories.map((rr) => rr.rule);
+  }
+
   async remove(id: string) {
     const existingRepository = await this.prisma.repository.findUnique({
       where: { id },

@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRuleDto } from './dto/create-rule.dto';
 import { AssignRuleDto } from './dto/assign-rule.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class RulesService {
@@ -28,7 +29,8 @@ export class RulesService {
         ruleType: createRuleDto.ruleType,
         content: createRuleDto.content,
         severity: createRuleDto.severity || 'AVISO',
-        isActive: createRuleDto.isActive !== undefined ? createRuleDto.isActive : true,
+        isActive:
+          createRuleDto.isActive !== undefined ? createRuleDto.isActive : true,
         createdById: userId,
       },
       include: {
@@ -47,8 +49,17 @@ export class RulesService {
     return rule;
   }
 
-  async findAll() {
+  async findAll(repositoryId?: string) {
+    const where: Prisma.AnalysisRuleWhereInput = {};
+
+    if (repositoryId) {
+      where.repositories = {
+        some: { repositoryId },
+      };
+    }
+
     const rules = await this.prisma.analysisRule.findMany({
+      where,
       include: {
         createdBy: {
           select: {
@@ -115,7 +126,9 @@ export class RulesService {
     });
 
     if (!rule) {
-      throw new NotFoundException(`Rule with ID ${assignRuleDto.ruleId} not found`);
+      throw new NotFoundException(
+        `Rule with ID ${assignRuleDto.ruleId} not found`,
+      );
     }
 
     const repositories = await this.prisma.repository.findMany({
@@ -213,7 +226,9 @@ export class RulesService {
     const rule = await this.prisma.analysisRule.update({
       where: { id },
       data: {
-        ...(updateRuleDto.title !== undefined && { title: updateRuleDto.title }),
+        ...(updateRuleDto.title !== undefined && {
+          title: updateRuleDto.title,
+        }),
         ...(updateRuleDto.description !== undefined && {
           description: updateRuleDto.description,
         }),

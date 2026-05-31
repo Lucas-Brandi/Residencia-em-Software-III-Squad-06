@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  Query,
 } from '@nestjs/common';
 import { RulesService } from './rules.service';
 import { CreateRuleDto } from './dto/create-rule.dto';
@@ -19,6 +20,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 
@@ -32,7 +34,10 @@ export class RulesController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar uma nova regra' })
   @ApiResponse({ status: 201, description: 'Regra criada com sucesso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos ou usuário não encontrado' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos ou usuário não encontrado',
+  })
   @ApiBody({ type: CreateRuleDto })
   async create(@Body() createRuleDto: CreateRuleDto, @Request() req) {
     const rule = await this.rulesService.create(createRuleDto, req.user.id);
@@ -44,10 +49,26 @@ export class RulesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todas as regras' })
-  @ApiResponse({ status: 200, description: 'Lista de regras retornada com sucesso' })
-  async findAll() {
-    const rules = await this.rulesService.findAll();
+  @ApiOperation({
+    summary: 'Listar todas as regras',
+    description:
+      'Retorna todas as regras de análise. Use o parâmetro `repositoryId` para ' +
+      'filtrar apenas as regras vinculadas a um repositório específico.',
+  })
+  @ApiQuery({
+    name: 'repositoryId',
+    required: false,
+    type: String,
+    description: 'UUID do repositório para filtrar as regras vinculadas',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de regras retornada com sucesso',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async findAll(@Query('repositoryId') repositoryId?: string) {
+    const rules = await this.rulesService.findAll(repositoryId);
     return {
       statusCode: HttpStatus.OK,
       data: rules,
@@ -70,8 +91,14 @@ export class RulesController {
   @Post('assign')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Vincular uma regra a um ou mais repositórios' })
-  @ApiResponse({ status: 200, description: 'Regra vinculada aos repositórios com sucesso' })
-  @ApiResponse({ status: 404, description: 'Regra ou repositório(s) não encontrado(s)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Regra vinculada aos repositórios com sucesso',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Regra ou repositório(s) não encontrado(s)',
+  })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiBody({ type: AssignRuleDto })
   async assignToRepositories(@Body() assignRuleDto: AssignRuleDto) {
@@ -107,7 +134,10 @@ export class RulesController {
   @ApiOperation({ summary: 'Atualizar uma regra' })
   @ApiParam({ name: 'id', description: 'ID da regra' })
   @ApiResponse({ status: 200, description: 'Regra atualizada com sucesso' })
-  @ApiResponse({ status: 403, description: 'Sem permissão para editar esta regra' })
+  @ApiResponse({
+    status: 403,
+    description: 'Sem permissão para editar esta regra',
+  })
   @ApiResponse({ status: 404, description: 'Regra não encontrada' })
   @ApiBody({ type: CreateRuleDto })
   async update(
@@ -133,7 +163,10 @@ export class RulesController {
   @ApiOperation({ summary: 'Deletar uma regra' })
   @ApiParam({ name: 'id', description: 'ID da regra' })
   @ApiResponse({ status: 200, description: 'Regra deletada com sucesso' })
-  @ApiResponse({ status: 403, description: 'Sem permissão para deletar esta regra' })
+  @ApiResponse({
+    status: 403,
+    description: 'Sem permissão para deletar esta regra',
+  })
   @ApiResponse({ status: 404, description: 'Regra não encontrada' })
   async remove(@Param('id') id: string, @Request() req) {
     const result = await this.rulesService.remove(

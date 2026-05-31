@@ -71,6 +71,64 @@ export class RepositoriesController {
     return { statusCode: HttpStatus.OK, data: repository };
   }
 
+  @Get(':id/rules')
+  @ApiOperation({
+    summary: 'Listar regras vinculadas a um repositório',
+    description:
+      'Retorna todas as regras de análise vinculadas ao repositório informado. ' +
+      'Inclui criador de cada regra, severity e status (ativo/inativo). ' +
+      'Útil para popular a tabela de regras filtrada por repositório no front.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID do repositório', type: String })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de regras do repositório retornada com sucesso',
+    schema: {
+      properties: {
+        statusCode: { type: 'number', example: 200 },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              title: {
+                type: 'string',
+                example: 'Proibir variáveis snake_case',
+              },
+              description: { type: 'string', nullable: true },
+              ruleType: { type: 'string', example: 'clean_code' },
+              content: { type: 'string' },
+              severity: {
+                type: 'string',
+                enum: ['CRITICO', 'AVISO', 'INFO'],
+                example: 'AVISO',
+              },
+              isActive: { type: 'boolean', example: true },
+              createdAt: { type: 'string', format: 'date-time' },
+              createdBy: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  username: { type: 'string' },
+                  githubUsername: { type: 'string', nullable: true },
+                  avatarUrl: { type: 'string', nullable: true },
+                  role: { type: 'string', enum: ['USER', 'ADMIN'] },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Repositório não encontrado' })
+  async findRules(@Param('id') id: string) {
+    const rules = await this.repositoriesService.findRules(id);
+    return { statusCode: HttpStatus.OK, data: rules };
+  }
+
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Atualizar repositório (Admin only)' })
