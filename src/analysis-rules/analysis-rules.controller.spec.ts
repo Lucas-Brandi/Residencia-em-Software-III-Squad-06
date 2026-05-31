@@ -9,7 +9,15 @@ describe('AnalysisRulesController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AnalysisRulesController],
-      providers: [AnalysisRulesService, mockPrismaServiceProvider],
+      providers: [
+        mockPrismaServiceProvider,
+        {
+          provide: AnalysisRulesService,
+          useValue: {
+            // Add mock methods here as needed
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<AnalysisRulesController>(AnalysisRulesController);
