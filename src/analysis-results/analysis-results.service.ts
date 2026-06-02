@@ -47,7 +47,9 @@ export class AnalysisResultsService {
     });
 
     if (!pullRequest) {
-      throw new BadRequestException('Pull request not found');
+      throw new BadRequestException(
+        'Pull request not found. Use GET /pull-requests para obter o UUID interno, ou GET /pull-requests/by-github/:githubId/:prNumber. O número do PR no GitHub (ex.: 10) não é o prId.',
+      );
     }
 
     const analysisResult = await this.prisma.analysisResult.create({
@@ -130,7 +132,9 @@ export class AnalysisResultsService {
       });
 
       if (!pullRequest) {
-        throw new BadRequestException('Pull request not found');
+        throw new BadRequestException(
+          'Pull request not found. Use GET /pull-requests para obter o UUID interno, ou GET /pull-requests/by-github/:githubId/:prNumber.',
+        );
       }
     }
 

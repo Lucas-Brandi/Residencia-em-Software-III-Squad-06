@@ -13,7 +13,10 @@ export class CreateRepositoryDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ description: 'ID numérico do repositório no GitHub', example: 123456789 })
+  @ApiProperty({
+    description: 'ID numérico do repositório no GitHub',
+    example: 123456789,
+  })
   @IsNumber()
   @IsNotEmpty()
   githubId: number;

@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import OpenAI from 'openai';
 import { AIResponse } from './interfaces/ai-response.interface';
+import { RuleContext } from './interfaces/rule-context.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -33,7 +34,7 @@ export class AIService {
 
   async analyzeCode(
     codeSnippet: string,
-    rules: string[],
+    rules: RuleContext[],
     configId?: string,
   ): Promise<AIResponse> {
     try {
@@ -86,18 +87,29 @@ export class AIService {
     }
   }
 
-  private buildSystemPrompt(rules: string[]): string {
+  private buildSystemPrompt(rules: RuleContext[]): string {
     const securityRule =
       'Always scan for security vulnerabilities such as SQL injection, XSS, insecure deserialization, hardcoded secrets, broken authentication, and any other OWASP Top 10 issues.';
-
-    const allRules = rules.length ? [...rules, securityRule] : [securityRule];
 
     const focus = rules.length
       ? 'Analyze the provided code snippet based EXACTLY on the following rules:'
       : 'No custom rules are registered for this repository. Analyze the provided code snippet focusing exclusively on security vulnerabilities:';
 
+    const formattedRules = rules.length
+      ? rules
+          .map(
+            (rule, index) =>
+              `${index + 1}. [REGRA: "${rule.title}" | Tipo: ${rule.ruleType}]\n   ${rule.content}`,
+          )
+          .join('\n')
+      : `1. ${securityRule}`;
+
+    const securityAppendix = rules.length
+      ? `\n\nAdditionally, always apply this security baseline:\n${rules.length + 1}. ${securityRule}`
+      : '';
+
     return `You are a strict code review assistant. ${focus}
-${allRules.map((rule, index) => `${index + 1}. ${rule}`).join('\n')}
+${formattedRules}${securityAppendix}
 
 You MUST respond with a valid JSON object containing exactly these three keys:
 - "healthScore": A number between 0 and 100 representing the overall code quality.
@@ -107,6 +119,7 @@ You MUST respond with a valid JSON object containing exactly these three keys:
   - "description": A clear description of the issue found.
   - "filePath": (optional) The file path where the issue was found, if identifiable from the diff.
   - "lineNumber": (optional) The line number of the issue, if identifiable.
+  - "ruleName": (optional) The exact title of the custom rule violated, as listed above. Omit for security-only findings.
 
 Example response:
 {

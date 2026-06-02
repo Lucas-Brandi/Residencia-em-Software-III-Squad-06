@@ -49,6 +49,15 @@ export class RulesService {
     return rule;
   }
 
+  async findActiveByRepository(repositoryId: string) {
+    return this.prisma.analysisRule.findMany({
+      where: {
+        isActive: true,
+        repositories: { some: { repositoryId } },
+      },
+    });
+  }
+
   async findAll(repositoryId?: string) {
     const where: Prisma.AnalysisRuleWhereInput = {};
 
@@ -214,7 +223,7 @@ export class RulesService {
     const isCreator = existingRule.createdById === userId;
     const isAdmin = userRole === 'ADMIN';
     const isTeamMember = existingRule.repositories.some((ruleRepo) =>
-      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+      ruleRepo.repository.team?.members.some((m) => m.userId === userId),
     );
 
     if (!isCreator && !isAdmin && !isTeamMember) {
@@ -281,7 +290,7 @@ export class RulesService {
     const isCreator = existingRule.createdById === userId;
     const isAdmin = userRole === 'ADMIN';
     const isTeamMember = existingRule.repositories.some((ruleRepo) =>
-      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+      ruleRepo.repository.team?.members.some((m) => m.userId === userId),
     );
 
     if (!isCreator && !isAdmin && !isTeamMember) {

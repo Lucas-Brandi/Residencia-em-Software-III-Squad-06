@@ -25,6 +25,7 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AIService } from 'src/AI/ai.service';
 import { GithubAppService } from 'src/github/github-app.service';
+import { RulesService } from 'src/rules/rules.service';
 
 @ApiTags('webhook')
 @Public()
@@ -36,6 +37,7 @@ export class GithubWebhookController {
     private readonly prisma: PrismaService,
     private readonly aiService: AIService,
     private readonly githubAppService: GithubAppService,
+    private readonly rulesService: RulesService,
   ) {}
 
   @Post()
@@ -71,22 +73,22 @@ export class GithubWebhookController {
   ) {
     // ─── Validação de assinatura ──────────────────────────────────────────────
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const rawBody: Buffer = req.rawBody ?? Buffer.alloc(0);
-      const hmac = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
-        .digest('hex');
-      const expected = `sha256=${hmac}`;
-      if (
-        !signature ||
-        !crypto.timingSafeEqual(
-          Buffer.from(expected),
-          Buffer.from(signature),
-        )
-      ) {
-        throw new UnauthorizedException('Assinatura de webhook inválida');
-      }
+    if (!webhookSecret) {
+      throw new UnauthorizedException(
+        'GITHUB_WEBHOOK_SECRET não configurado no servidor',
+      );
+    }
+    const rawBody: Buffer = req.rawBody ?? Buffer.alloc(0);
+    const hmac = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+    const expected = `sha256=${hmac}`;
+    if (
+      !signature ||
+      !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+    ) {
+      throw new UnauthorizedException('Assinatura de webhook inválida');
     }
 
     if (event !== 'pull_request') {
@@ -94,7 +96,11 @@ export class GithubWebhookController {
     }
 
     const action = payload?.action as string | undefined;
-    if (action !== 'opened' && action !== 'synchronize' && action !== 'reopened') {
+    if (
+      action !== 'opened' &&
+      action !== 'synchronize' &&
+      action !== 'reopened'
+    ) {
       return { received: true };
     }
 
@@ -145,28 +151,74 @@ export class GithubWebhookController {
     }
 
     // ─── Busca o repositório no banco ─────────────────────────────────────────
-    const repository = await this.prisma.repository.findUnique({
+    let repository = await this.prisma.repository.findUnique({
       where: { githubId: repositoryGithubId },
     });
 
     if (!repository) {
-      this.logger.warn(
-        `Repositório com githubId ${repositoryGithubId} não encontrado no banco`,
-      );
-      return { received: true };
+      const prAuthorLogin = payload?.pull_request?.user?.login as
+        | string
+        | undefined;
+      const orgLogin =
+        (payload?.organization?.login as string | undefined) ?? owner;
+
+      if (!orgLogin) {
+        this.logger.warn(
+          `[Auto-registro] Repositório githubId ${repositoryGithubId} (${owner}/${repo}) não cadastrado: org ausente no payload (organization.login e repository.owner.login indefinidos)`,
+        );
+        return { received: true };
+      }
+
+      if (!prAuthorLogin) {
+        this.logger.warn(
+          `[Auto-registro] Repositório githubId ${repositoryGithubId} (${owner}/${repo}) não cadastrado: login do autor do PR ausente no payload`,
+        );
+        return { received: true };
+      }
+
+      const eligibility =
+        await this.githubAppService.checkAutoRegisterEligibility(
+          orgLogin,
+          prAuthorLogin,
+          true,
+        );
+
+      if (!eligibility.allowed) {
+        this.logger.warn(
+          `[Auto-registro] Repositório githubId ${repositoryGithubId} (${owner}/${repo}) não cadastrado: ${eligibility.reason}. Cadastre via POST /repositories ou adicione "${prAuthorLogin}" à org "${orgLogin}".`,
+        );
+        return { received: true };
+      }
+
+      try {
+        repository = await this.prisma.repository.create({
+          data: {
+            name: repo,
+            githubId: repositoryGithubId,
+            githubUrl: (payload?.repository?.html_url as string) ?? null,
+            isAutoRegistered: true,
+          },
+        });
+        const viaLabel: Record<typeof eligibility.via, string> = {
+          org_member: 'membro confirmado via API /members',
+          org_membership: 'membro confirmado via API /memberships',
+          repo_access:
+            'app com acesso ao repositório (members:read indisponível)',
+        };
+        this.logger.log(
+          `Repositório "${repo}" auto-registrado (githubId: ${repositoryGithubId}) — ${viaLabel[eligibility.via]}`,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `[Auto-registro] Repositório githubId ${repositoryGithubId} (${owner}/${repo}) não persistido no banco: ${message}`,
+        );
+        return { received: true };
+      }
     }
 
     // ─── Busca regras vinculadas ──────────────────────────────────────────────
-    const rules = await this.prisma.analysisRule.findMany({
-      where: {
-        isActive: true,
-        repositories: {
-          some: {
-            repositoryId: repository.id,
-          },
-        },
-      },
-    });
+    const rules = await this.rulesService.findActiveByRepository(repository.id);
 
     if (!rules.length) {
       this.logger.log(
@@ -174,10 +226,8 @@ export class GithubWebhookController {
       );
     }
 
-    const ruleContents = rules.map((r) => r.content);
-
     // ─── Análise da IA ────────────────────────────────────────────────────────
-    const aiResult = await this.aiService.analyzeCode(diff, ruleContents);
+    const aiResult = await this.aiService.analyzeCode(diff, rules);
     const score = aiResult.healthScore;
 
     // ─── Posta comentário no PR ───────────────────────────────────────────────
@@ -271,6 +321,10 @@ export class GithubWebhookController {
 
       // Persiste os findings individuais da IA
       if (aiResult.findings.length > 0) {
+        const ruleIdByTitle = new Map(
+          rules.map((rule) => [rule.title, rule.id]),
+        );
+
         await this.prisma.finding.createMany({
           data: aiResult.findings.map((finding) => ({
             analysisResultId: analysisResult.id,
@@ -278,6 +332,9 @@ export class GithubWebhookController {
             description: finding.description,
             filePath: finding.filePath ?? null,
             lineNumber: finding.lineNumber ?? null,
+            ruleId: finding.ruleName
+              ? (ruleIdByTitle.get(finding.ruleName) ?? null)
+              : null,
           })),
         });
 
@@ -286,11 +343,16 @@ export class GithubWebhookController {
         );
       }
 
+      this.logger.log(
+        `PR #${prNumber} persistido no banco (pullRequestId: ${pullRequest.id}, analysisResultId: ${analysisResult.id})`,
+      );
+
       return {
         received: true,
         analysed: true,
         healthScore: score,
         findingsCount: aiResult.findings.length,
+        pullRequestId: pullRequest.id,
         analysisResultId: analysisResult.id,
       };
     } catch (err) {

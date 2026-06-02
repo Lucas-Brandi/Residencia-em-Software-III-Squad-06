@@ -125,7 +125,7 @@ export class AnalysisRulesService {
     const isCreator = existingRule.createdById === userId;
     const isAdmin = userRole === 'ADMIN';
     const isTeamMember = existingRule.repositories.some((ruleRepo) =>
-      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+      ruleRepo.repository.team?.members.some((m) => m.userId === userId),
     );
 
     if (!isCreator && !isAdmin && !isTeamMember) {
@@ -222,7 +222,7 @@ export class AnalysisRulesService {
     const isCreator = existingRule.createdById === userId;
     const isAdmin = userRole === 'ADMIN';
     const isTeamMember = existingRule.repositories.some((ruleRepo) =>
-      ruleRepo.repository.team.members.some((m) => m.userId === userId),
+      ruleRepo.repository.team?.members.some((m) => m.userId === userId),
     );
 
     if (!isCreator && !isAdmin && !isTeamMember) {

@@ -12,7 +12,10 @@ export class TestAiDto {
 
   @ApiProperty({
     description: 'Lista de regras de análise a aplicar',
-    example: ['Use camelCase para variáveis', 'Evite funções com mais de 50 linhas'],
+    example: [
+      'Use camelCase para variáveis',
+      'Evite funções com mais de 50 linhas',
+    ],
     type: [String],
   })
   @IsArray()

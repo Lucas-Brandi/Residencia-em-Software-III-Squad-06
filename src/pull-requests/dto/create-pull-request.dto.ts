@@ -27,7 +27,10 @@ export class CreatePullRequestDto {
   @IsNotEmpty()
   authorId: number;
 
-  @ApiPropertyOptional({ description: 'Título do pull request', example: 'fix: corrige bug' })
+  @ApiPropertyOptional({
+    description: 'Título do pull request',
+    example: 'fix: corrige bug',
+  })
   @IsString()
   @IsOptional()
   title?: string;
