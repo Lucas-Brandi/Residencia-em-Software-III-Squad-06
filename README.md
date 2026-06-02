@@ -86,9 +86,19 @@ DATABASE_URL=postgres://usuario:senha@localhost:5432/nome_banco
 # Autenticação
 JWT_SECRET=uma_chave_secreta_bem_forte_e_aleatoria
 
-# Opcional: Integração com GitHub
-GITHUB_API_TOKEN=seu_token_do_github_aqui
+# OpenAI
+AI_API_KEY=sua_chave_openai
+
+# GitHub App (obrigatório para webhook e comentários em PRs)
+GITHUB_APP_ID=
+GITHUB_APP_PRIVATE_KEY=
+GITHUB_APP_INSTALLATION_ID=
+
+# Webhook GitHub (obrigatório — requisições sem assinatura válida retornam 401)
+GITHUB_WEBHOOK_SECRET=
 ```
+
+Repositórios da organização podem ser **auto-registrados** no primeiro PR aberto por um membro da org, sem cadastro manual via `POST /repositories`.
 
 ### Conexão com Banco de Dados
 

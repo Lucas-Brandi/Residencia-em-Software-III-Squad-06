@@ -24,7 +24,8 @@ export class CreateRuleDto {
 
   @ApiPropertyOptional({
     description: 'Descrição detalhada do objetivo da regra',
-    example: 'Esta regra garante que o código siga o padrão camelCase do projeto.',
+    example:
+      'Esta regra garante que o código siga o padrão camelCase do projeto.',
   })
   @IsString()
   @IsOptional()
@@ -40,7 +41,8 @@ export class CreateRuleDto {
 
   @ApiProperty({
     description: 'Conteúdo/instrução da regra em formato texto para a IA',
-    example: 'Variáveis e funções devem usar camelCase. Proibido usar snake_case.',
+    example:
+      'Variáveis e funções devem usar camelCase. Proibido usar snake_case.',
   })
   @IsString()
   @IsNotEmpty()

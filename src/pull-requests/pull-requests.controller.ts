@@ -8,6 +8,7 @@ import {
   Delete,
   HttpStatus,
   HttpCode,
+  ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -57,6 +58,64 @@ export class PullRequestsController {
   async findAll() {
     const pullRequests = await this.pullRequestsService.findAll();
     return { statusCode: HttpStatus.OK, data: pullRequests };
+  }
+
+  @Get('by-github/:githubId/:prNumber')
+  @ApiOperation({
+    summary: 'Buscar pull request pelo githubId do repositório e número do PR',
+    description:
+      'Use este endpoint quando souber o número do PR no GitHub (ex.: 10) e o githubId do repositório. ' +
+      'Não confundir com GET /pull-requests/:id, que exige o UUID interno do banco.',
+  })
+  @ApiParam({
+    name: 'githubId',
+    description: 'ID numérico do repositório no GitHub',
+    example: 1230327804,
+  })
+  @ApiParam({
+    name: 'prNumber',
+    description: 'Número do PR no GitHub',
+    example: 10,
+  })
+  @ApiResponse({ status: 200, description: 'Pull request encontrado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Pull request ou repositório não encontrado',
+  })
+  async findByGithub(
+    @Param('githubId', ParseIntPipe) githubId: number,
+    @Param('prNumber', ParseIntPipe) prNumber: number,
+  ) {
+    const pullRequest =
+      await this.pullRequestsService.findByGithubRepoAndNumber(
+        githubId,
+        prNumber,
+      );
+    return { statusCode: HttpStatus.OK, data: pullRequest };
+  }
+
+  @Get('by-github/:githubId/:prNumber/analysis')
+  @ApiOperation({
+    summary:
+      'Buscar PR com análise pelo githubId do repositório e número do PR',
+  })
+  @ApiParam({ name: 'githubId', type: Number, example: 1230327804 })
+  @ApiParam({ name: 'prNumber', type: Number, example: 10 })
+  @ApiResponse({ status: 200, description: 'PR com análise retornado' })
+  @ApiResponse({
+    status: 404,
+    description: 'Pull request ou repositório não encontrado',
+  })
+  async findByGithubWithAnalysis(
+    @Param('githubId', ParseIntPipe) githubId: number,
+    @Param('prNumber', ParseIntPipe) prNumber: number,
+  ) {
+    const data =
+      await this.pullRequestsService.findByGithubRepoAndNumberWithAnalysis(
+        githubId,
+        prNumber,
+      );
+    return { statusCode: HttpStatus.OK, data };
   }
 
   @Get(':id')

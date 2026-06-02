@@ -117,6 +117,92 @@ export class PullRequestsService {
     return pr;
   }
 
+  async findByGithubRepoAndNumber(githubId: number, prNumber: number) {
+    const repository = await this.prisma.repository.findUnique({
+      where: { githubId },
+    });
+    if (!repository) {
+      throw new NotFoundException(
+        `Repository with githubId ${githubId} not found`,
+      );
+    }
+
+    const pr = await this.prisma.pullRequest.findUnique({
+      where: {
+        repositoryId_prNumber: {
+          repositoryId: repository.id,
+          prNumber,
+        },
+      },
+      include: this.baseInclude(),
+    });
+
+    if (!pr) {
+      throw new NotFoundException(
+        `Pull request #${prNumber} not found for repository githubId ${githubId}`,
+      );
+    }
+
+    return pr;
+  }
+
+  async findByGithubRepoAndNumberWithAnalysis(
+    githubId: number,
+    prNumber: number,
+  ) {
+    const repository = await this.prisma.repository.findUnique({
+      where: { githubId },
+    });
+    if (!repository) {
+      throw new NotFoundException(
+        `Repository with githubId ${githubId} not found`,
+      );
+    }
+
+    const pr = await this.prisma.pullRequest.findUnique({
+      where: {
+        repositoryId_prNumber: {
+          repositoryId: repository.id,
+          prNumber,
+        },
+      },
+      include: this.analysisInclude(),
+    });
+
+    if (!pr) {
+      throw new NotFoundException(
+        `Pull request #${prNumber} not found for repository githubId ${githubId}`,
+      );
+    }
+
+    const latestResult = pr.results[0] ?? null;
+
+    return {
+      id: pr.id,
+      prNumber: pr.prNumber,
+      title: pr.title,
+      githubUrl: pr.githubUrl,
+      status: pr.status,
+      openedAt: pr.openedAt,
+      closedAt: pr.closedAt,
+      repository: pr.repository,
+      author: pr.author,
+      analysis: latestResult
+        ? {
+            id: latestResult.id,
+            healthScore: latestResult.healthScore,
+            iaFeedback: latestResult.iaFeedback,
+            status: latestResult.status,
+            reviewedBy: latestResult.reviewedBy,
+            reviewedAt: latestResult.reviewedAt,
+            createdAt: latestResult.createdAt,
+            findings: latestResult.findings,
+          }
+        : null,
+      analysisHistory: pr.results,
+    };
+  }
+
   // ─── FIND ONE WITH ANALYSIS (tela de pr-analysis) ─────────────────────────
   // FIX: agora retorna findings dentro de analysis (resultado mais recente)
   // e também no analysisHistory completo

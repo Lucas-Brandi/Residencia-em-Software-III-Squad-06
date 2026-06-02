@@ -54,6 +54,12 @@ export class AIController {
     description: 'Falha ao conectar com a IA (OpenAI)',
   })
   async testAnalyzeCode(@Body() testAiDto: TestAiDto) {
-    return this.aiService.analyzeCode(testAiDto.codeSnippet, testAiDto.rules);
+    const rules = testAiDto.rules.map((content, index) => ({
+      id: `test-${index}`,
+      title: `Rule ${index + 1}`,
+      ruleType: 'custom',
+      content,
+    }));
+    return this.aiService.analyzeCode(testAiDto.codeSnippet, rules);
   }
 }

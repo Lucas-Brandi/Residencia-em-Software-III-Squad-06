@@ -26,7 +26,8 @@ export class CreateAnalysisRuleDto {
 
   @ApiPropertyOptional({
     description: 'Descrição detalhada do objetivo da regra',
-    example: 'Esta regra garante que o código siga o padrão camelCase do projeto.',
+    example:
+      'Esta regra garante que o código siga o padrão camelCase do projeto.',
   })
   @IsString()
   @IsOptional()

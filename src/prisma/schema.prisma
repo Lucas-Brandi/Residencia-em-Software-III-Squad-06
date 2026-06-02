@@ -72,16 +72,17 @@ model TeamUser {
 
 // --- CORE DO BOT E GESTÃO ---
 model Repository {
-  id        String   @id @default(uuid())
-  name      String
-  githubId  Int      @unique @map("github_id")
-  githubUrl String?  @map("github_url")
-  teamId    String   @map("team_id")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  name             String
+  githubId         Int      @unique @map("github_id")
+  githubUrl        String?  @map("github_url")
+  teamId           String?  @map("team_id")
+  isActive         Boolean  @default(true) @map("is_active")
+  isAutoRegistered Boolean  @default(false) @map("is_auto_registered")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   // Relacionamentos
-  team  Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team  Team?            @relation(fields: [teamId], references: [id], onDelete: Cascade)
   rules RuleRepository[]
   prs   PullRequest[]
 
