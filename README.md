@@ -32,6 +32,49 @@
 - **Linting**: ESLint 9 com plugin TypeScript
 - **Formatação de Código**: Prettier 3.4
 - **CLI**: NestJS CLI
+- **IA**: OpenAI GPT-4o-mini para análise inteligente de código
+- **VCS**: GitHub App Integration com Webhooks
+
+---
+
+## 🎯 Funcionalidades Principais
+
+### Análise Inteligente de PRs com IA
+- Integração com OpenAI GPT-4o-mini para análise automática de código
+- Sugestões de melhoria baseadas em IA
+- Análise de qualidade, segurança e performance
+
+### Dashboard com Métricas
+- Visualização em tempo real de PRs e análises
+- Filtros avançados por data, título e status
+- Cálculo de tempo economizado em revisões manuais
+- Health score e status de análise para cada PR
+
+### Sistema de Findings
+- Detecção automática de problemas no código
+- Classificação por severidade (CRÍTICO, AVISO, INFO)
+- Rastreamento de findings por PR e regra de análise
+
+### Gestão de Regras de Análise
+- Criar, editar e deletar regras customizadas
+- Associar regras a usuários específicos
+- Controle de ativação/desativação por times
+
+### GitHub App Integration
+- Webhooks para eventos de PR (abrir, atualizar, fechar)
+- Auto-registro de repositórios na primeira análise
+- Autenticação segura com GitHub via JWT
+
+### Gestão de Times (Squads)
+- Organização de usuários em times
+- Controle de acesso baseado em papéis (ADMIN, USER)
+- Associação de repositórios a times específicos
+
+### Autenticação e Segurança
+- Autenticação JWT com refresh tokens
+- Criptografia bcrypt para senhas
+- Sistema de papéis e permissões
+- Status de usuário (ATIVO, PENDENTE, INATIVO)
 
 ## Pré-requisitos & Instalação
 
@@ -83,20 +126,34 @@ PORT=3000
 # Banco de Dados (PostgreSQL + Prisma)
 DATABASE_URL=postgres://usuario:senha@localhost:5432/nome_banco
 
-# Autenticação
+# Autenticação JWT
 JWT_SECRET=uma_chave_secreta_bem_forte_e_aleatoria
 
-# OpenAI
-AI_API_KEY=sua_chave_openai
+# OpenAI - Integração com IA (OBRIGATÓRIO)
+AI_API_KEY=sua_chave_api_openai_aqui
 
-# GitHub App (obrigatório para webhook e comentários em PRs)
-GITHUB_APP_ID=
-GITHUB_APP_PRIVATE_KEY=
-GITHUB_APP_INSTALLATION_ID=
+# GitHub App - Integração com GitHub (OBRIGATÓRIO para webhooks e análises)
+GITHUB_APP_ID=seu_github_app_id
+GITHUB_APP_PRIVATE_KEY=sua_chave_privada_github
+GITHUB_APP_INSTALLATION_ID=seu_installation_id
 
-# Webhook GitHub (obrigatório — requisições sem assinatura válida retornam 401)
-GITHUB_WEBHOOK_SECRET=
+# GitHub Webhook Secret - Segurança (OBRIGATÓRIO)
+GITHUB_WEBHOOK_SECRET=seu_webhook_secret
 ```
+
+### Obtendo as Credenciais
+
+**GitHub App:**
+1. Acesse https://github.com/settings/apps
+2. Crie uma nova GitHub App
+3. Configure os webhooks para apontar para `https://seu-dominio/webhook/github`
+4. Gere uma chave privada na aba "Private keys"
+5. Copie APP_ID, Private Key e Installation ID
+
+**OpenAI:**
+1. Acesse https://platform.openai.com/api-keys
+2. Crie uma nova chave de API
+3. Copie e cole em `AI_API_KEY`
 
 Repositórios da organização podem ser **auto-registrados** no primeiro PR aberto por um membro da org, sem cadastro manual via `POST /repositories`.
 
@@ -301,7 +358,201 @@ Abre a interface Prisma Studio em http://localhost:5555 para navegação e ediç
 
 ---
 
-## Documentação da API (Swagger)
+## 🕀 Fluxo de Análise de Pull Requests
+
+O sistema opera em um fluxo de processamento automatizado:
+
+```
+1. TRIGGER: PR aberto/atualizado no GitHub
+   ↑
+2. WEBHOOK: GitHub envia evento para POST /webhook/github
+   ↑
+3. VALIDAÇÃO: Assinatura do webhook é verificada (GITHUB_WEBHOOK_SECRET)
+   ↑
+4. REGISTRO: Repositório auto-registrado se não existir
+   ↑
+5. ANALYSIS RULES: Regras customizadas são acionadas
+   ↑
+6. IA ANALYSIS: OpenAI GPT-4o-mini analisa o código
+   ↑
+7. FINDINGS: Problemas são detectados e classif icados
+   ↑
+8. ARMAZENAMENTO: Resultados salvos no PostgreSQL
+   ↑
+9. DASHBOARD: Dados disponíveis em tempo real no painel
+```
+
+### Exemplo de Workflow Completo
+
+1. Desenvolvedora abre PR no GitHub
+2. GitHub App recebe webhook
+3. Sistema extrai código e histórico da PR
+4. OpenAI analisa a qualidade, segurança e performance
+5. Regras customizadas da squad são aplicadas
+6. Findings (CRITICO, AVISO, INFO) são criados
+7. Resultado combinado gera um health score
+8. Dashboard exibe a análise com tímpo estimado de revisão manual economizado
+
+---
+
+## 📄 Principais Endpoints da API
+
+### Dashboard & Métricas
+```
+GET    /dashboard              - Obter métricas gerais com filtros
+GET    /dashboard/pr-stats     - Estatísticas de PRs
+```
+
+### Pull Requests
+```
+GET    /pull-requests          - Listar PRs com filtros
+GET    /pull-requests/:id      - Obter detalhes de uma PR
+POST   /pull-requests          - Registrar PR manualmente
+```
+
+### Análise de Resultados
+```
+GET    /analysis-results       - Listar resultados de análise
+GET    /analysis-results/:id   - Obter resultado de uma PR
+PATCH  /analysis-results/:id   - Atualizar status da revisão
+```
+
+### Findings (Problemas Detectados)
+```
+GET    /findings               - Listar findings com filtros por severidade
+GET    /findings/:id           - Obter detalhes de um finding
+DELETE /findings/:id           - Remover um finding
+```
+
+### Regras de Análise
+```
+GET    /analysis-rules         - Listar regras de análise
+POST   /analysis-rules         - Criar nova regra
+GET    /analysis-rules/:id     - Obter detalhes da regra
+PUT    /analysis-rules/:id     - Atualizar regra
+DELETE /analysis-rules/:id     - Deletar regra
+```
+
+### Times (Squads)
+```
+GET    /teams                  - Listar times
+POST   /teams                  - Criar novo time
+GET    /teams/:id              - Obter detalhes do time
+GET    /teams/:id/members      - Listar membros do time
+POST   /teams/:id/members      - Adicionar membro ao time
+DELETE /teams/:id/members/:uid - Remover membro do time
+```
+
+### Usuários
+```
+GET    /users                  - Listar usuários
+GET    /users/:id              - Obter dados do usuário
+PUT    /users/:id              - Atualizar usuário
+```
+
+### Repositórios
+```
+GET    /repositories           - Listar repositórios registrados
+GET    /repositories/:id       - Obter detalhes do repositório
+POST   /repositories           - Registrar novo repositório
+DELETE /repositories/:id       - Remover repositório
+```
+
+### Autenticação
+```
+POST   /auth/register          - Registrar novo usuário
+POST   /auth/login             - Login e obter JWT token
+POST   /auth/refresh           - Renovar JWT token
+POST   /auth/logout            - Fazer logout
+```
+
+### GitHub Webhook (Integração)
+```
+POST   /webhook/github         - Receber eventos do GitHub
+(Requer assinatura válida com GITHUB_WEBHOOK_SECRET)
+```
+
+Consulte o Swagger em `http://localhost:3000/api` para documentação interativa completa.
+
+---
+
+## 📚 Estrutura dos Módulos
+
+### Módulos Principais
+
+#### **AI Module** (`src/AI/`)
+- Integração com OpenAI GPT-4o-mini
+- Geração de análises inteligentes de código
+- Processamento de contexto de regras
+- **Serviços**: `AIService`, `AIController`
+
+#### **Analysis Rules Module** (`src/analysis-rules/`)
+- CRUD de regras de análise customizadas
+- Execução de regras em PRs
+- Controle de proprietário (usuário criador)
+- **Serviços**: `AnalysisRulesService`, `AnalysisRulesController`
+
+#### **Analysis Results Module** (`src/analysis-results/`)
+- Armazenamento de resultados de análise
+- Cálculo de health score
+- Rastreamento de status (PENDING, COMPLETED, FAILED)
+- **Serviços**: `AnalysisResultsService`, `AnalysisResultsController`
+
+#### **Dashboard Module** (`src/dashboard/`)
+- Visualização de métricas e PRs
+- Filtros avançados (data, título, status)
+- Cálculo de tempo economizado em revisões
+- **Serviços**: `DashboardService`, `DashboardController`
+
+#### **Findings Module** (`src/findings/`)
+- Detecção e classificacião de problemas
+- Filtros por severidade (CRITICO, AVISO, INFO)
+- Relação com Analysis Results e Rules
+- **Serviços**: `FindingsService`, `FindingsController`
+
+#### **GitHub Module** (`src/github/`)
+- Integração com GitHub App API
+- Processamento de webhooks
+- Autenticação via JWT com GitHub
+- **Serviços**: `GithubAppService`
+
+#### **Auth Module** (`src/auth/`)
+- Autenticação JWT com Passport
+- Generação e refresh de tokens
+- Guards e Strategies de segurança
+- **Serviços**: `AuthService`, `AuthController`
+
+#### **Teams Module** (`src/teams/`)
+- Gestão de squads/times
+- Associação de usuários e repositórios
+- Controle de acesso team-based
+- **Serviços**: `TeamsService`, `TeamsController`
+
+#### **Users Module** (`src/users/`)
+- Gestão de usuários
+- Status (ATIVO, PENDENTE, INATIVO)
+- Integração com GitHub username
+- **Serviços**: `UsersService`, `UsersController`
+
+#### **Repositories Module** (`src/repositories/`)
+- Registro e gestão de repositórios
+- Auto-registro via webhooks
+- Associação a teams
+- **Serviços**: `RepositoriesService`, `RepositoriesController`
+
+#### **Pull Requests Module** (`src/pull-requests/`)
+- Armazenamento de meta-dados de PRs
+- Rastreamento de PRs relacionadas
+- Status e timestamps
+- **Serviços**: `PullRequestsService`, `PullRequestsController`
+
+#### **Webhook Module** (`src/webhook/`)
+- Recebimento de eventos do GitHub
+- Validação de assinatura de webhook
+- Disparo de fluxo de análise
+- **Serviços**: `GithubWebhookController`
+
+## 📄 Documentação da API (Swagger)
 
 O projeto integra **@nestjs/swagger** para documentação automática de OpenAPI.
 
@@ -333,6 +584,361 @@ export class TeamsController {
   }
 }
 ```
+
+---
+
+## 🔍 Modelo de Dados (Schema Prisma)
+
+### Entidades Principais
+
+#### **User** - Usuários do Sistema
+```
+- id: Int (PK)
+- username: String (unique)
+- githubUsername: String (opcional - para integração GitHub)
+- avatarUrl: String (opcional)
+- password: String (bcrypt)
+- role: Role (USER | ADMIN)
+- email: String (unique)
+- status: UserStatus (ATIVO | PENDENTE | INATIVO)
+- resetToken: String (para reset de senha)
+- refreshToken: String (para JWT refresh)
+
+Relacionamentos:
+- teams: TeamUser[] (times que pertence)
+- rules: AnalysisRule[] (regras criadas)
+- prs: PullRequest[] (PRs analisadas)
+- reviewedResults: AnalysisResult[] (revisões realizadas)
+```
+
+#### **Team** - Times/Squads
+```
+- id: String (UUID PK)
+- name: String
+- createdAt: DateTime
+
+Relacionamentos:
+- members: TeamUser[] (membros do time)
+- repositories: Repository[] (repos do time)
+```
+
+#### **Repository** - Repositórios GitHub
+```
+- id: String (UUID PK)
+- name: String
+- githubId: Int (unique)
+- githubUrl: String
+- teamId: String (FK para Team)
+- isActive: Boolean
+- status: RepositoryStatus
+
+Relacionamentos:
+- team: Team
+- pullRequests: PullRequest[]
+```
+
+#### **PullRequest** - Pull Requests do GitHub
+```
+- id: String (UUID PK)
+- prNumber: Int
+- title: String
+- description: String
+- author: String
+- status: PRStatus (OPEN | MERGED | CLOSED)
+- openedAt: DateTime
+- updatedAt: DateTime
+- repositoryId: String (FK)
+
+Relacionamentos:
+- repository: Repository
+- analysisResults: AnalysisResult[]
+```
+
+#### **AnalysisResult** - Resultados de Análise
+```
+- id: String (UUID PK)
+- prId: String (FK ou referencial externo)
+- healthScore: Float (0-100)
+- riskLevel: Severity (CRITICO | AVISO | INFO)
+- status: AnalysisStatus (PENDING | COMPLETED | FAILED)
+- findindsCount: Int
+- createdAt: DateTime
+- reviewedBy: Int (FK para User)
+
+Relacionamentos:
+- findings: Finding[]
+- reviewer: User
+```
+
+#### **Finding** - Problemas/Achados Detectados
+```
+- id: String (UUID PK)
+- title: String
+- description: String
+- severity: Severity (CRITICO | AVISO | INFO)
+- ruleId: String (FK para AnalysisRule)
+- analysisResultId: String (FK)
+- lineNumber: Int (opcional)
+- codeSnippet: String (opcional)
+
+Relacionamentos:
+- rule: AnalysisRule
+- analysisResult: AnalysisResult
+```
+
+#### **AnalysisRule** - Regras Customizadas de Análise
+```
+- id: String (UUID PK)
+- title: String
+- description: String
+- ruleType: RuleType
+- severity: Severity
+- isActive: Boolean
+- userId: Int (FK - criador)
+- createdAt: DateTime
+
+Relacionamentos:
+- creator: User
+- findings: Finding[]
+```
+
+---
+
+## 🚀 Guia Rápido de Uso
+
+### 1. Primeira Execução
+
+```bash
+# Clonar e instalar
+git clone <REPO_URL>
+cd Residencia-em-Software-III-Squad-06
+npm install
+
+# Configurar .env com todas as variáveis (veja seção anterior)
+# Importante: AI_API_KEY, GITHUB_APP_* e GITHUB_WEBHOOK_SECRET são OBRIGATÓRIOS
+
+# Preparar banco de dados
+npm run prisma:generate
+npm run prisma:migrate
+
+# Iniciar em desenvolvimento
+npm run start:dev
+```
+
+### 2. Acessar o Sistema
+
+- **API**: http://localhost:3000
+- **Swagger (Docs)**: http://localhost:3000/api
+- **Prisma Studio**: `npm run prisma:studio` → http://localhost:5555
+
+### 3. Criar Primeiro Usuário e Time
+
+```bash
+# Via Swagger ou curl:
+
+# 1. Registrar usuário
+POST /auth/register
+{
+  "username": "seu-usuario",
+  "email": "seu@email.com",
+  "password": "senha-forte"
+}
+
+# 2. Login para obter token
+POST /auth/login
+{
+  "username": "seu-usuario",
+  "password": "senha-forte"
+}
+# Resposta: { "access_token": "jwt-token", ... }
+
+# 3. Criar um time (squad)
+POST /teams
+Headers: Authorization: Bearer {jwt-token}
+{
+  "name": "Squad Backend"
+}
+
+# 4. Adicionar membro ao time
+POST /teams/{teamId}/members
+Headers: Authorization: Bearer {jwt-token}
+{
+  "userId": 1
+}
+```
+
+### 4. Configurar GitHub App
+
+```bash
+# 1. Ir para https://github.com/settings/apps
+# 2. Criar nova GitHub App
+# 3. Preencher:
+#    - Application name: "Squad-06 PR Analyzer"
+#    - Homepage URL: https://seu-dominio.com
+#    - Webhook URL: https://seu-dominio.com/webhook/github
+#    - Webhook secret: Gerar secret aleatório
+# 4. Permissões necessárias:
+#    - Pull requests: Read
+#    - Code: Read
+#    - Commit statuses: Read & write
+# 5. Subscrever eventos: Pull request, Push
+# 6. Instalar em repositórios desejados
+# 7. Copiar para .env:
+#    - GITHUB_APP_ID
+#    - GITHUB_APP_PRIVATE_KEY
+#    - GITHUB_APP_INSTALLATION_ID
+#    - GITHUB_WEBHOOK_SECRET
+```
+
+### 5. Analisar Primeira PR
+
+Após configurar GitHub App:
+
+```bash
+# 1. Abrir uma PR no repositório registrado
+# 2. GitHub envia webhook automaticamente
+# 3. Sistema analisa com IA e regras
+# 4. Acessar dashboard:
+GET /dashboard
+# 5. Ver results:
+GET /analysis-results
+# 6. Ver findings:
+GET /findings
+```
+
+---
+
+## 📚 Melhores Práticas e Padrões
+
+### Desenvolvimento
+
+#### Arquitetura Modular
+- Crie novos módulos em `src/features/<nome>/`
+- Use a estrutura: `module.ts`, `service.ts`, `controller.ts`, `dto/`, `entities/`
+- Sempre exporte os serviços com `exports: [...]` no módulo
+
+```bash
+# Gerar módulo automaticamente
+nest generate module features/nova-feature
+nest generate service features/nova-feature
+nest generate controller features/nova-feature --spec
+```
+
+#### Uso de DTOs
+- Crie classes DTO em `src/features/<nome>/dto/`
+- Use `class-validator` para validação
+- Use `class-transformer` para transformação de dados
+
+```typescript
+// exemplo.dto.ts
+import { IsString, IsEmail, MinLength } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @MinLength(4)
+  username: string;
+
+  @IsEmail()
+  email: string;
+}
+```
+
+#### Injeção de Dependências
+- Use sempre injeção de dependências no construtor
+- Nunca importe módulos diretamente
+
+```typescript
+@Injectable()
+export class MyService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: Logger,
+  ) {}
+}
+```
+
+### Banco de Dados
+
+#### Modificações no Schema
+1. Edite `src/prisma/schema.prisma`
+2. Execute: `npm run prisma:migrate "descrição da mudança"`
+3. NUNCA edite manualmente os arquivos em `src/prisma/migrations/`
+4. Sempre commit dos arquivos de migração
+
+#### Convenções
+- Nomes de coluna no BD: **snake_case** (use `@map()` e `@@map()`)
+- Nomes de propriedades TS: **camelCase**
+- Enums do sistema: **UPPER_CASE**
+
+```typescript
+model User {
+  id      Int     @id @default(autoincrement())
+  userName String @map("user_name")  // BD: user_name, TS: userName
+  email   String  @unique            // 
+
+  @@map("users")                      // Tabela BD: users
+}
+```
+
+### Código
+
+#### Linting e Formato
+```bash
+# Antes de commitar
+npm run lint       # ESLint com auto-fix
+npm run format     # Prettier
+```
+
+#### Testes
+```bash
+# Escrever testes para novos serviços
+npm test                # Executar testes
+npm run test:watch      # Watch mode
+npm run test:cov        # Cobertura
+```
+
+#### Logging
+Use sempre o Logger do NestJS, não `console.log`:
+
+```typescript
+import { Logger } from '@nestjs/common';
+
+export class MyService {
+  private readonly logger = new Logger(MyService.name);
+
+  async doSomething() {
+    this.logger.log('Informação');
+    this.logger.warn('Aviso');
+    this.logger.error('Erro');
+    this.logger.debug('Debug');
+  }
+}
+```
+
+### Segurança
+
+#### Variáveis de Ambiente
+- NUNCA commitar `.env` (deve estar em `.gitignore`)
+- NUNCA hardcodear secrets no código
+- Usar variáveis de ambiente para tudo sensível
+
+#### JWT & Autenticação
+- JWT_SECRET deve ser uma string forte e aleatória
+- Refresh token deve ser renovado regularmente
+- Use Guards `@UseGuards(JwtAuthGuard)` para proteger rotas
+
+```typescript
+@Get('/perfil')
+@UseGuards(JwtAuthGuard)
+getPerfil(@Request() req) {
+  return req.user; // Usuário autenticado
+}
+```
+
+#### Webhook GitHub
+- Validar assinatura com GITHUB_WEBHOOK_SECRET em toda requisição
+- Rejeitar requisições sem assinatura válida (status 401)
+- Usar HTTPS em produção
 
 ---
 
