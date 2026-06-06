@@ -43,6 +43,29 @@ export class RepositoriesService {
     }
   }
 
+  async createMany(dtos: CreateRepositoryDto[]) {
+  const results = await Promise.allSettled(
+    dtos.map((dto) => this.create(dto)),
+  );
+
+  const created: any[] = [];
+  const failed: { index: number; githubId: number; reason: string }[] = [];
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      created.push(result.value);
+    } else {
+      failed.push({
+        index,
+        githubId: dtos[index].githubId,
+        reason: result.reason?.message ?? 'Unknown error',
+      });
+    }
+  });
+
+  return { created, failed };
+};
+
   async findAll() {
     const repositories = await this.prisma.repository.findMany({
       where: {
