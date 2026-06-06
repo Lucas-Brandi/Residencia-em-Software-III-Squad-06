@@ -18,6 +18,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { CreateManyRepositoriesDto } from './dto/create-many-repositories.dto';
 import { RepositoriesService } from './repositories.service';
 import { CreateRepositoryDto } from './dto/create-repository.dto';
 import { UpdateRepositoryDto } from './dto/update-repository.dto';
@@ -47,6 +48,22 @@ export class RepositoriesController {
       statusCode: HttpStatus.CREATED,
       message: 'Repository created successfully',
       data: repository,
+    };
+  }
+
+   @Post('bulk')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Criar múltiplos repositórios de uma vez (Admin only)' })
+  @ApiBody({ type: CreateManyRepositoriesDto })
+  @ApiResponse({ status: 201, description: 'Repositórios processados' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin only' })
+  async createMany(@Body() body: CreateManyRepositoriesDto) {
+    const result = await this.repositoriesService.createMany(body.repositories);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: `${result.created.length} criado(s), ${result.failed.length} falhou(aram)`,
+      data: result,
     };
   }
 
